@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>بث القنوات المباشر - Oscar TV</title>
+  <title>بث القنوات المباشر - AlameeereTv</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
 </head>
@@ -25,7 +25,7 @@
     <!-- Player -->
     <section class="lg:col-span-2 flex flex-col gap-3">
       <div class="relative bg-black rounded-2xl overflow-hidden aspect-video border border-slate-800 shadow-2xl flex items-center justify-center">
-        <video id="videoPlayer" controls autoplay class="w-full h-full object-contain"></video>
+        <video id="videoPlayer" controls autoplay playsinline class="w-full h-full object-contain"></video>
         <div id="notice" class="absolute inset-0 flex items-center justify-center bg-slate-900/90 text-slate-400 text-sm p-4 text-center">
           اختر قناة من القائمة لبدء المشاهدة
         </div>
@@ -52,6 +52,9 @@
   </main>
 
   <script>
+    const PROXY = 'https://os.m737217130.workers.dev/?url=';
+    const BEIN_1_STREAM = 'http://newlb.getourxufiles.shop:8080/assets/CsrsaFYFKo4MuziKdPkb1BElYSLJUI3XQ6tfXlnT107b0x2Ei6/myvs8QGJp1i2Uju0lgp8zwhBgV70LX6U5bjpYiiaSDyQEd1lTR/1313.css';
+
     const video = document.getElementById('videoPlayer');
     const notice = document.getElementById('notice');
     const currentName = document.getElementById('currentName');
@@ -62,27 +65,59 @@
     let hls = null;
     let allChannels = [];
 
-    function playChannel(ch) {
-      currentName.textContent = ch.name;
-      currentCat.textContent = ch.category || "عام";
-      
-      if (!ch.stream_url) {
-        notice.textContent = `القناة: ${ch.name} (عدد السيرفرات: ${ch.streams_count})`;
-        notice.classList.remove('hidden');
-        return;
+    function playStream(rawUrl, channelName, channelCat) {
+      currentName.textContent = channelName;
+      currentCat.textContent = channelCat || "بث مباشر";
+      notice.classList.add('hidden');
+
+      const playableUrl = PROXY + encodeURIComponent(rawUrl);
+
+      if (hls) {
+        hls.destroy();
       }
 
-      notice.classList.add('hidden');
-      if (hls) hls.destroy();
-
-      if (Hls.isSupported() && ch.stream_url.includes('.m3u8')) {
-        hls = new Hls();
-        hls.loadSource(ch.stream_url);
+      if (Hls.isSupported()) {
+        hls = new Hls({
+          enableWorker: true,
+          lowLatencyMode: true
+        });
+        hls.loadSource(playableUrl);
         hls.attachMedia(video);
-        hls.on(Hls.Events.MANIFEST_PARSED, () => video.play());
+        hls.on(Hls.Events.MANIFEST_PARSED, () => {
+          video.play().catch(() => {});
+        });
+        hls.on(Hls.Events.ERROR, (event, data) => {
+          if (data.fatal) {
+            switch (data.type) {
+              case Hls.ErrorTypes.NETWORK_ERROR:
+                hls.startLoad();
+                break;
+              case Hls.ErrorTypes.MEDIA_ERROR:
+                hls.recoverMediaError();
+                break;
+              default:
+                hls.destroy();
+                break;
+            }
+          }
+        });
+      } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
+        video.src = playableUrl;
+        video.play().catch(() => {});
+      }
+    }
+
+    function playChannel(ch) {
+      // إذا كانت القناة beIN 1 أو لديها رابط محدد
+      if (ch.id === 63 || ch.name.includes('beIN Sports 1')) {
+        playStream(BEIN_1_STREAM, ch.name, ch.category);
+      } else if (ch.stream_url) {
+        playStream(ch.stream_url, ch.name, ch.category);
       } else {
-        video.src = ch.stream_url;
-        video.play();
+        currentName.textContent = ch.name;
+        currentCat.textContent = ch.category;
+        notice.textContent = `القناة: ${ch.name} (قيد جلب السيرفر الخاص بها)`;
+        notice.classList.remove('hidden');
       }
     }
 
@@ -102,7 +137,7 @@
           </div>
           <div class="flex-1 truncate">
             <p class="text-sm font-semibold text-white truncate">${ch.name}</p>
-            <p class="text-xs text-slate-400 truncate">${ch.category} • ${ch.streams_count} سيرفرات</p>
+            <p class="text-xs text-slate-400 truncate">${ch.category} • ${ch.streams_count || 1} سيرفرات</p>
           </div>
         `;
         item.onclick = () => playChannel(ch);
@@ -117,7 +152,7 @@
         allChannels = await res.json();
         render(allChannels);
       } catch (e) {
-        channelsList.innerHTML = '<p class="text-amber-400 text-xs text-center p-4">سيتم عرض القنوات هنا بمجرد تشغيل ملف التحديث التلقائي في الخطوة القادمة.</p>';
+        channelsList.innerHTML = '<p class="text-amber-400 text-xs text-center p-4">خطأ في تحميل ملف القنوات</p>';
       }
     }
 
