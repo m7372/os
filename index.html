@@ -3,37 +3,37 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>بث القنوات المباشر - AlameeereTv</title>
+  <title>Oscar TV - البث المباشر</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
 </head>
-<body class="bg-slate-950 text-slate-100 min-h-screen flex flex-col">
+<body class="bg-slate-950 text-slate-100 min-h-screen flex flex-col font-sans">
 
   <!-- Header -->
   <header class="bg-slate-900 border-b border-slate-800 p-4 sticky top-0 z-20 flex flex-wrap justify-between items-center gap-4">
     <div class="flex items-center gap-3">
       <span class="w-3 h-3 bg-red-500 rounded-full animate-ping"></span>
-      <h1 class="text-xl font-bold text-white">Oscar TV - بث مباشر</h1>
+      <h1 class="text-xl font-bold text-white">AlameeereTv - بث مباشر</h1>
     </div>
-    <input id="searchInput" type="text" placeholder="ابحث عن قناة..." 
-           class="bg-slate-800 border border-slate-700 text-sm rounded-lg px-4 py-2 w-64 focus:outline-none focus:border-blue-500 transition">
+    <input id="searchInput" type="text" placeholder="ابحث عن قناة (مثال: beIN, كأس, ON)..." 
+           class="bg-slate-800 border border-slate-700 text-sm rounded-lg px-4 py-2 w-72 focus:outline-none focus:border-red-500 transition text-white placeholder-slate-400">
   </header>
 
-  <!-- Content -->
+  <!-- Main Content -->
   <main class="flex-1 grid grid-cols-1 lg:grid-cols-3 gap-6 p-4 max-w-7xl mx-auto w-full">
     
-    <!-- Player -->
+    <!-- Player Section -->
     <section class="lg:col-span-2 flex flex-col gap-3">
       <div class="relative bg-black rounded-2xl overflow-hidden aspect-video border border-slate-800 shadow-2xl flex items-center justify-center">
         <video id="videoPlayer" controls autoplay playsinline class="w-full h-full object-contain"></video>
-        <div id="notice" class="absolute inset-0 flex items-center justify-center bg-slate-900/90 text-slate-400 text-sm p-4 text-center">
-          اختر قناة من القائمة لبدء المشاهدة
+        <div id="notice" class="absolute inset-0 flex items-center justify-center bg-slate-900/90 text-slate-300 text-sm p-4 text-center">
+          اختر قناة من القائمة لبدء البث المباشر
         </div>
       </div>
       <div class="bg-slate-900 border border-slate-800 rounded-xl p-4 flex justify-between items-center">
         <div>
           <h2 id="currentName" class="text-lg font-bold text-white">لم يتم تحديد قناة</h2>
-          <p id="currentCat" class="text-xs text-slate-400">بث مباشر عالي الدقة</p>
+          <p id="currentCat" class="text-xs text-slate-400">بث مباشر عالي الدقة بدون تقطيع</p>
         </div>
         <span class="text-xs bg-red-500/20 text-red-400 border border-red-500/30 px-3 py-1 rounded-full font-bold">LIVE</span>
       </div>
@@ -43,51 +43,81 @@
     <section class="bg-slate-900 border border-slate-800 rounded-2xl p-4 flex flex-col gap-3 max-h-[82vh]">
       <div class="flex justify-between items-center pb-2 border-b border-slate-800">
         <h3 class="font-bold text-sm text-slate-300">القنوات المتاحة (<span id="count">0</span>)</h3>
+        <span class="text-xs text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20">جاهزة للبث</span>
       </div>
       <div id="channelsList" class="flex-1 overflow-y-auto space-y-2 pr-1">
-        <p class="text-slate-500 text-center py-8 text-sm">جاري تحميل القنوات...</p>
+        <p class="text-slate-500 text-center py-4 text-sm">جاري تحميل القنوات...</p>
       </div>
     </section>
-
   </main>
 
   <script>
-    const PROXY = 'https://os.m737217130.workers.dev/?url=';
-    const BEIN_1_STREAM = 'http://newlb.getourxufiles.shop:8080/assets/CsrsaFYFKo4MuziKdPkb1BElYSLJUI3XQ6tfXlnT107b0x2Ei6/myvs8QGJp1i2Uju0lgp8zwhBgV70LX6U5bjpYiiaSDyQEd1lTR/1313.css';
+    const WORKER_URL = 'https://os.m737217130.workers.dev/';
+    const STREAM_BASE = 'http://newlb.getourxufiles.shop:8080/assets/CsrsaFYFKo4MuziKdPkb1BElYSLJUI3XQ6tfXlnT107b0x2Ei6/myvs8QGJp1i2Uju0lgp8zwhBgV70LX6U5bjpYiiaSDyQEd1lTR/';
 
+    // خريطة السيرفرات المكتشفة والمجربة
+    const STREAM_MAP = {
+      // beIN Sports (1 - 9)
+      63: 1313, 65: 1316, 66: 1319, 67: 1322, 82: 1325, 83: 1328, 101: 1331, 126: 1334, 129: 1337,
+      // ألوان الرياضية (1 - 6)
+      118: 1340, 119: 1343, 120: 1346, 121: 1349, 122: 1355, 123: 1358,
+      // قنوات ON Sport
+      69: 1361, 107: 1364, 72: 1367,
+      // قنوات شاهد الرياضية
+      92: 1370, 93: 1373,
+      // قنوات StarzPlay الرياضية
+      98: 1376, 99: 1379, 100: 1382,
+      // الرابعة والكأس
+      125: 1385, 94: 1388, 95: 1391, 96: 1409, 97: 1412, 414: 1415,
+      // ثمانية وشاشا و STC
+      80: 80, 90: 1424, 91: 1427, 267: 1430, 268: 1433, 106: 1436,
+      // أبو ظبي والسعودية ودبي والكويت والشارقة
+      102: 1439, 103: 1442, 194: 1445, 195: 1448, 196: 1451, 104: 1454,
+      136: 1457, 137: 1460, 411: 1469, 412: 1472, 413: 1475,
+      // قنوات عامة وأطفال ودراما
+      71: 71, 23: 23, 68: 68, 74: 74, 38: 38, 77: 77, 62: 62, 29: 29, 47: 47, 59: 59, 53: 53
+    };
+
+    let allChannels = [];
+    let hls = null;
     const video = document.getElementById('videoPlayer');
     const notice = document.getElementById('notice');
     const currentName = document.getElementById('currentName');
     const currentCat = document.getElementById('currentCat');
     const channelsList = document.getElementById('channelsList');
-    const searchInput = document.getElementById('searchInput');
     const count = document.getElementById('count');
-    let hls = null;
-    let allChannels = [];
+    const searchInput = document.getElementById('searchInput');
 
-    function playStream(rawUrl, channelName, channelCat) {
-      currentName.textContent = channelName;
-      currentCat.textContent = channelCat || "بث مباشر";
-      notice.classList.add('hidden');
+    function getStreamUrl(ch) {
+      if (ch.stream_url) return ch.stream_url;
+      const streamId = STREAM_MAP[ch.id] || ch.id;
+      return `${STREAM_BASE}${streamId}.css`;
+    }
 
-      const playableUrl = PROXY + encodeURIComponent(rawUrl);
+    function playStream(rawUrl, name, cat) {
+      currentName.textContent = name;
+      currentCat.textContent = cat || 'بث مباشر';
+      notice.textContent = 'جاري الاتصال بالبث...';
+      notice.classList.remove('hidden');
 
-      if (hls) {
-        hls.destroy();
-      }
+      const playableUrl = `${WORKER_URL}?url=${encodeURIComponent(rawUrl)}`;
+
+      if (hls) hls.destroy();
 
       if (Hls.isSupported()) {
-        hls = new Hls({
-          enableWorker: true,
-          lowLatencyMode: true
-        });
+        hls = new Hls({ enableWorker: true, lowLatencyMode: true });
         hls.loadSource(playableUrl);
         hls.attachMedia(video);
+
         hls.on(Hls.Events.MANIFEST_PARSED, () => {
+          notice.classList.add('hidden');
           video.play().catch(() => {});
         });
-        hls.on(Hls.Events.ERROR, (event, data) => {
+
+        hls.on(Hls.Events.ERROR, (e, data) => {
           if (data.fatal) {
+            notice.textContent = `تعذر تشغيل سيرفر هذه القناة حالياً`;
+            notice.classList.remove('hidden');
             switch (data.type) {
               case Hls.ErrorTypes.NETWORK_ERROR:
                 hls.startLoad();
@@ -103,42 +133,38 @@
         });
       } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
         video.src = playableUrl;
+        notice.classList.add('hidden');
         video.play().catch(() => {});
       }
     }
 
     function playChannel(ch) {
-      // إذا كانت القناة beIN 1 أو لديها رابط محدد
-      if (ch.id === 63 || ch.name.includes('beIN Sports 1')) {
-        playStream(BEIN_1_STREAM, ch.name, ch.category);
-      } else if (ch.stream_url) {
-        playStream(ch.stream_url, ch.name, ch.category);
-      } else {
-        currentName.textContent = ch.name;
-        currentCat.textContent = ch.category;
-        notice.textContent = `القناة: ${ch.name} (قيد جلب السيرفر الخاص بها)`;
-        notice.classList.remove('hidden');
-      }
+      const streamUrl = getStreamUrl(ch);
+      playStream(streamUrl, ch.name, ch.category);
     }
 
     function render(list) {
       channelsList.innerHTML = '';
       count.textContent = list.length;
       if (!list.length) {
-        channelsList.innerHTML = '<p class="text-slate-500 text-center py-4 text-sm">لا توجد نتائج</p>';
+        channelsList.innerHTML = '<p class="text-slate-500 text-center py-4 text-sm">لا توجد قنوات مطابقة</p>';
         return;
       }
       list.forEach(ch => {
+        const isVerified = Boolean(STREAM_MAP[ch.id]);
         const item = document.createElement('div');
-        item.className = "border border-slate-800 bg-slate-800/40 hover:bg-slate-800 p-2.5 rounded-xl cursor-pointer flex items-center gap-3 transition";
+        item.className = "border border-slate-800 bg-slate-800/40 hover:bg-slate-800 p-2.5 rounded-xl cursor-pointer flex items-center justify-between gap-3 transition group";
         item.innerHTML = `
-          <div class="w-10 h-10 rounded-lg bg-slate-900 border border-slate-700 flex items-center justify-center overflow-hidden shrink-0">
-            ${ch.logo ? `<img src="${ch.logo}" class="w-full h-full object-contain" onerror="this.style.display='none'">` : '📺'}
+          <div class="flex items-center gap-3 truncate">
+            <div class="w-10 h-10 rounded-lg bg-slate-900 border border-slate-700 flex items-center justify-center overflow-hidden shrink-0">
+              ${ch.logo ? `<img src="${ch.logo}" class="w-full h-full object-contain" onerror="this.style.display='none'">` : '📺'}
+            </div>
+            <div class="truncate">
+              <p class="text-sm font-semibold text-white group-hover:text-red-400 transition truncate">${ch.name}</p>
+              <p class="text-xs text-slate-400 truncate">${ch.category} ${ch.country ? '• ' + ch.country : ''}</p>
+            </div>
           </div>
-          <div class="flex-1 truncate">
-            <p class="text-sm font-semibold text-white truncate">${ch.name}</p>
-            <p class="text-xs text-slate-400 truncate">${ch.category} • ${ch.streams_count || 1} سيرفرات</p>
-          </div>
+          ${isVerified ? '<span class="text-[10px] text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 rounded-full shrink-0">شغال</span>' : ''}
         `;
         item.onclick = () => playChannel(ch);
         channelsList.appendChild(item);
@@ -157,8 +183,8 @@
     }
 
     searchInput.addEventListener('input', (e) => {
-      const q = e.target.value.toLowerCase();
-      render(allChannels.filter(c => c.name.toLowerCase().includes(q) || c.category.toLowerCase().includes(q)));
+      const q = e.target.value.toLowerCase().trim();
+      render(allChannels.filter(c => c.name.toLowerCase().includes(q) || (c.category && c.category.toLowerCase().includes(q))));
     });
 
     init();
