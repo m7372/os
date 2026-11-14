@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>بث القنوات المباشر - Oscar TV</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+</head>
+<body class="bg-slate-950 text-slate-100 min-h-screen flex flex-col">
+
+  <!-- Header -->
+  <header class="bg-slate-900 border-b border-slate-800 p-4 sticky top-0 z-20 flex flex-wrap justify-between items-center gap-4">
+    <div class="flex items-center gap-3">
+      <span class="w-3 h-3 bg-red-500 rounded-full animate-ping"></span>
+      <h1 class="text-xl font-bold text-white">Oscar TV - بث مباشر</h1>
+    </div>
+    <input id="searchInput" type="text" placeholder="ابحث عن قناة..." 
+           class="bg-slate-800 border border-slate-700 text-sm rounded-lg px-4 py-2 w-64 focus:outline-none focus:border-blue-500 transition">
+  </header>
+
+  <!-- Content -->
+  <main class="flex-1 grid grid-cols-1 lg:grid-cols-3 gap-6 p-4 max-w-7xl mx-auto w-full">
+    
+    <!-- Player -->
+    <section class="lg:col-span-2 flex flex-col gap-3">
+      <div class="relative bg-black rounded-2xl overflow-hidden aspect-video border border-slate-800 shadow-2xl flex items-center justify-center">
+        <video id="videoPlayer" controls autoplay class="w-full h-full object-contain"></video>
+        <div id="notice" class="absolute inset-0 flex items-center justify-center bg-slate-900/90 text-slate-400 text-sm p-4 text-center">
+          اختر قناة من القائمة لبدء المشاهدة
+        </div>
+      </div>
+      <div class="bg-slate-900 border border-slate-800 rounded-xl p-4 flex justify-between items-center">
+        <div>
+          <h2 id="currentName" class="text-lg font-bold text-white">لم يتم تحديد قناة</h2>
+          <p id="currentCat" class="text-xs text-slate-400">بث مباشر عالي الدقة</p>
+        </div>
+        <span class="text-xs bg-red-500/20 text-red-400 border border-red-500/30 px-3 py-1 rounded-full font-bold">LIVE</span>
+      </div>
+    </section>
+
+    <!-- Channels List -->
+    <section class="bg-slate-900 border border-slate-800 rounded-2xl p-4 flex flex-col gap-3 max-h-[82vh]">
+      <div class="flex justify-between items-center pb-2 border-b border-slate-800">
+        <h3 class="font-bold text-sm text-slate-300">القنوات المتاحة (<span id="count">0</span>)</h3>
+      </div>
+      <div id="channelsList" class="flex-1 overflow-y-auto space-y-2 pr-1">
+        <p class="text-slate-500 text-center py-8 text-sm">جاري تحميل القنوات...</p>
+      </div>
+    </section>
+
+  </main>
+
+  <script>
+    const video = document.getElementById('videoPlayer');
+    const notice = document.getElementById('notice');
+    const currentName = document.getElementById('currentName');
+    const currentCat = document.getElementById('currentCat');
+    const channelsList = document.getElementById('channelsList');
+    const searchInput = document.getElementById('searchInput');
+    const count = document.getElementById('count');
+    let hls = null;
+    let allChannels = [];
+
+    function playChannel(ch) {
+      currentName.textContent = ch.name;
+      currentCat.textContent = ch.category || "عام";
+      
+      if (!ch.stream_url) {
+        notice.textContent = `القناة: ${ch.name} (عدد السيرفرات: ${ch.streams_count})`;
+        notice.classList.remove('hidden');
+        return;
+      }
+
+      notice.classList.add('hidden');
+      if (hls) hls.destroy();
+
+      if (Hls.isSupported() && ch.stream_url.includes('.m3u8')) {
+        hls = new Hls();
+        hls.loadSource(ch.stream_url);
+        hls.attachMedia(video);
+        hls.on(Hls.Events.MANIFEST_PARSED, () => video.play());
+      } else {
+        video.src = ch.stream_url;
+        video.play();
+      }
+    }
+
+    function render(list) {
+      channelsList.innerHTML = '';
+      count.textContent = list.length;
+      if (!list.length) {
+        channelsList.innerHTML = '<p class="text-slate-500 text-center py-4 text-sm">لا توجد نتائج</p>';
+        return;
+      }
+      list.forEach(ch => {
+        const item = document.createElement('div');
+        item.className = "border border-slate-800 bg-slate-800/40 hover:bg-slate-800 p-2.5 rounded-xl cursor-pointer flex items-center gap-3 transition";
+        item.innerHTML = `
+          <div class="w-10 h-10 rounded-lg bg-slate-900 border border-slate-700 flex items-center justify-center overflow-hidden shrink-0">
+            ${ch.logo ? `<img src="${ch.logo}" class="w-full h-full object-contain" onerror="this.style.display='none'">` : '📺'}
+          </div>
+          <div class="flex-1 truncate">
+            <p class="text-sm font-semibold text-white truncate">${ch.name}</p>
+            <p class="text-xs text-slate-400 truncate">${ch.category} • ${ch.streams_count} سيرفرات</p>
+          </div>
+        `;
+        item.onclick = () => playChannel(ch);
+        channelsList.appendChild(item);
+      });
+    }
+
+    async function init() {
+      try {
+        const res = await fetch('channels.json');
+        if (!res.ok) throw new Error();
+        allChannels = await res.json();
+        render(allChannels);
+      } catch (e) {
+        channelsList.innerHTML = '<p class="text-amber-400 text-xs text-center p-4">سيتم عرض القنوات هنا بمجرد تشغيل ملف التحديث التلقائي في الخطوة القادمة.</p>';
+      }
+    }
+
+    searchInput.addEventListener('input', (e) => {
+      const q = e.target.value.toLowerCase();
+      render(allChannels.filter(c => c.name.toLowerCase().includes(q) || c.category.toLowerCase().includes(q)));
+    });
+
+    init();
+  </script>
+</body>
+</html>
