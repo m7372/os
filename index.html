@@ -3,51 +3,45 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Oscar TV - البث المباشر</title>
+  <title>AlameeereTv - البث المباشر</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
 </head>
 <body class="bg-slate-950 text-slate-100 min-h-screen flex flex-col font-sans">
 
-  <!-- Header -->
   <header class="bg-slate-900 border-b border-slate-800 p-4 sticky top-0 z-20 flex flex-wrap justify-between items-center gap-4">
     <div class="flex items-center gap-3">
       <span class="w-3 h-3 bg-red-500 rounded-full animate-ping"></span>
-      <h1 class="text-xl font-bold text-white">AlameeereTv - بث مباشر</h1>
+      <h1 class="text-xl font-bold text-white">AlameeereTv - البث المباشر</h1>
     </div>
-    <input id="searchInput" type="text" placeholder="ابحث عن قناة (مثال: beIN, كأس, ON)..." 
+    <input id="searchInput" type="text" placeholder="ابحث عن قناة (مثال: beIN, MBC)..." 
            class="bg-slate-800 border border-slate-700 text-sm rounded-lg px-4 py-2 w-72 focus:outline-none focus:border-red-500 transition text-white placeholder-slate-400">
   </header>
 
-  <!-- Main Content -->
   <main class="flex-1 grid grid-cols-1 lg:grid-cols-3 gap-6 p-4 max-w-7xl mx-auto w-full">
     
-    <!-- Player Section -->
     <section class="lg:col-span-2 flex flex-col gap-3">
       <div class="relative bg-black rounded-2xl overflow-hidden aspect-video border border-slate-800 shadow-2xl flex items-center justify-center">
         <video id="videoPlayer" controls autoplay playsinline class="w-full h-full object-contain"></video>
         <div id="notice" class="absolute inset-0 flex items-center justify-center bg-slate-900/90 text-slate-300 text-sm p-4 text-center">
-          اختر قناة من القائمة لبدء البث المباشر
+          اختر قناة لبدء البث
         </div>
       </div>
-      <div class="bg-slate-900 border border-slate-800 rounded-xl p-4 flex justify-between items-center">
+      <div class="bg-slate-900 border border-slate-800 rounded-xl p-4 flex flex-wrap justify-between items-center gap-3">
         <div>
           <h2 id="currentName" class="text-lg font-bold text-white">لم يتم تحديد قناة</h2>
-          <p id="currentCat" class="text-xs text-slate-400">بث مباشر عالي الدقة بدون تقطيع</p>
+          <p id="currentCat" class="text-xs text-slate-400">بث مباشر بدون تقطيع</p>
         </div>
-        <span class="text-xs bg-red-500/20 text-red-400 border border-red-500/30 px-3 py-1 rounded-full font-bold">LIVE</span>
+        <div id="qualityControls" class="flex items-center gap-2"></div>
       </div>
     </section>
 
-    <!-- Channels List -->
     <section class="bg-slate-900 border border-slate-800 rounded-2xl p-4 flex flex-col gap-3 max-h-[82vh]">
       <div class="flex justify-between items-center pb-2 border-b border-slate-800">
         <h3 class="font-bold text-sm text-slate-300">القنوات المتاحة (<span id="count">0</span>)</h3>
-        <span class="text-xs text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20">جاهزة للبث</span>
+        <span class="text-xs text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20">سيرفرات مؤكدة</span>
       </div>
-      <div id="channelsList" class="flex-1 overflow-y-auto space-y-2 pr-1">
-        <p class="text-slate-500 text-center py-4 text-sm">جاري تحميل القنوات...</p>
-      </div>
+      <div id="channelsList" class="flex-1 overflow-y-auto space-y-2 pr-1"></div>
     </section>
   </main>
 
@@ -55,51 +49,41 @@
     const WORKER_URL = 'https://os.m737217130.workers.dev/';
     const STREAM_BASE = 'http://newlb.getourxufiles.shop:8080/assets/CsrsaFYFKo4MuziKdPkb1BElYSLJUI3XQ6tfXlnT107b0x2Ei6/myvs8QGJp1i2Uju0lgp8zwhBgV70LX6U5bjpYiiaSDyQEd1lTR/';
 
-    // خريطة السيرفرات المكتشفة والمجربة
-    const STREAM_MAP = {
-      // beIN Sports (1 - 9)
-      63: 1313, 65: 1316, 66: 1319, 67: 1322, 82: 1325, 83: 1328, 101: 1331, 126: 1334, 129: 1337,
-      // ألوان الرياضية (1 - 6)
-      118: 1340, 119: 1343, 120: 1346, 121: 1349, 122: 1355, 123: 1358,
-      // قنوات ON Sport
-      69: 1361, 107: 1364, 72: 1367,
-      // قنوات شاهد الرياضية
-      92: 1370, 93: 1373,
-      // قنوات StarzPlay الرياضية
-      98: 1376, 99: 1379, 100: 1382,
-      // الرابعة والكأس
-      125: 1385, 94: 1388, 95: 1391, 96: 1409, 97: 1412, 414: 1415,
-      // ثمانية وشاشا و STC
-      80: 80, 90: 1424, 91: 1427, 267: 1430, 268: 1433, 106: 1436,
-      // أبو ظبي والسعودية ودبي والكويت والشارقة
-      102: 1439, 103: 1442, 194: 1445, 195: 1448, 196: 1451, 104: 1454,
-      136: 1457, 137: 1460, 411: 1469, 412: 1472, 413: 1475,
-      // قنوات عامة وأطفال ودراما
-      71: 71, 23: 23, 68: 68, 74: 74, 38: 38, 77: 77, 62: 62, 29: 29, 47: 47, 59: 59, 53: 53
-    };
+    const CHANNELS = [
+      { id: 'bein1', name: 'beIN Sports 1', category: 'رياضة', logo: 'https://nextdaywithme.shop/uploads/channels/a097c34e337a8c9294d62cdfc17bb577.webp', streams: { 'FHD': 1319, 'HD': 1316, 'SD': 1313 } },
+      { id: 'bein2', name: 'beIN Sports 2', category: 'رياضة', logo: 'https://nextdaywithme.shop/uploads/channels/06dc8a8bae7d49bc3033271575498a7e.webp', streams: { 'FHD': 1328, 'HD': 1325, 'SD': 1322 } },
+      { id: 'bein3', name: 'beIN Sports 3', category: 'رياضة', logo: 'https://nextdaywithme.shop/uploads/channels/305e84a2db716775c64388f60741decb.webp', streams: { 'FHD': 1337, 'HD': 1334, 'SD': 1331 } },
+      { id: 'bein4', name: 'beIN Sports 4', category: 'رياضة', logo: 'https://nextdaywithme.shop/uploads/channels/449d45498946dd728453b1a4041b67c7.webp', streams: { 'FHD': 1346, 'HD': 1343, 'SD': 1340 } },
+      { id: 'bein5', name: 'beIN Sports 5', category: 'رياضة', logo: 'https://nextdaywithme.shop/uploads/channels/7f1ec6d635bc895634c24c181120e80d.webp', streams: { 'FHD': 1355, 'SD': 1349 } },
+      { id: 'bein6', name: 'beIN Sports 6', category: 'رياضة', logo: 'https://nextdaywithme.shop/uploads/channels/ff919dc1e73746e934dfd9f078d7e59d.webp', streams: { 'FHD': 1364, 'HD': 1361, 'SD': 1358 } },
+      { id: 'bein7', name: 'beIN Sports 7', category: 'رياضة', logo: 'https://nextdaywithme.shop/uploads/channels/fcec8d4f6e2e146452bb1f3b8e0aec67.webp', streams: { 'FHD': 1373, 'HD': 1370, 'SD': 1367 } },
+      { id: 'bein8', name: 'beIN Sports 8', category: 'رياضة', logo: 'https://nextdaywithme.shop/uploads/channels/5bc41cfd7a99da0bbec15f9c6c12a4b5.webp', streams: { 'FHD': 1382, 'HD': 1379, 'SD': 1376 } },
+      { id: 'bein9', name: 'beIN Sports 9', category: 'رياضة', logo: 'https://nextdaywithme.shop/uploads/channels/4d06ba05a00291f30f21ad8ad4ab4e1c.webp', streams: { 'FHD': 1391, 'HD': 1388, 'SD': 1385 } },
+      { id: 'mbc', name: 'MBC', category: 'عام', logo: 'https://nextdaywithme.shop/uploads/channels/3d6d0cc67d579516c868ce3caad7cb5a.webp', streams: { 'HD': 20, 'FHD': 29 } },
+      { id: 'dmc', name: 'dmc', category: 'عام', logo: '', streams: { 'HD': 44 } },
+      { id: 'dmc_drama', name: 'dmc دراما', category: 'دراما', logo: '', streams: { 'SD': 47 } },
+      { id: 'sama', name: 'قناة سما', category: 'عام', logo: '', streams: { 'SD': 71 } },
+      { id: 'sada_balad', name: 'صدى البلد', category: 'عام', logo: '', streams: { 'FHD': 74 } },
+      { id: 'rotana_drama', name: 'روتانا دراما', category: 'دراما', logo: '', streams: { 'FHD': 80 } }
+    ];
 
-    let allChannels = [];
+    let currentChannel = null;
+    let currentQuality = 'FHD';
     let hls = null;
     const video = document.getElementById('videoPlayer');
     const notice = document.getElementById('notice');
     const currentName = document.getElementById('currentName');
     const currentCat = document.getElementById('currentCat');
+    const qualityControls = document.getElementById('qualityControls');
     const channelsList = document.getElementById('channelsList');
     const count = document.getElementById('count');
     const searchInput = document.getElementById('searchInput');
 
-    function getStreamUrl(ch) {
-      if (ch.stream_url) return ch.stream_url;
-      const streamId = STREAM_MAP[ch.id] || ch.id;
-      return `${STREAM_BASE}${streamId}.css`;
-    }
-
-    function playStream(rawUrl, name, cat) {
-      currentName.textContent = name;
-      currentCat.textContent = cat || 'بث مباشر';
+    function playStream(streamId, ch) {
       notice.textContent = 'جاري الاتصال بالبث...';
       notice.classList.remove('hidden');
 
+      const rawUrl = `${STREAM_BASE}${streamId}.css`;
       const playableUrl = `${WORKER_URL}?url=${encodeURIComponent(rawUrl)}`;
 
       if (hls) hls.destroy();
@@ -108,28 +92,13 @@
         hls = new Hls({ enableWorker: true, lowLatencyMode: true });
         hls.loadSource(playableUrl);
         hls.attachMedia(video);
-
         hls.on(Hls.Events.MANIFEST_PARSED, () => {
           notice.classList.add('hidden');
           video.play().catch(() => {});
         });
-
-        hls.on(Hls.Events.ERROR, (e, data) => {
-          if (data.fatal) {
-            notice.textContent = `تعذر تشغيل سيرفر هذه القناة حالياً`;
-            notice.classList.remove('hidden');
-            switch (data.type) {
-              case Hls.ErrorTypes.NETWORK_ERROR:
-                hls.startLoad();
-                break;
-              case Hls.ErrorTypes.MEDIA_ERROR:
-                hls.recoverMediaError();
-                break;
-              default:
-                hls.destroy();
-                break;
-            }
-          }
+        hls.on(Hls.Events.ERROR, () => {
+          notice.textContent = 'تعذر تشغيل هذه الجودة حالياً، جرب جودة أخرى';
+          notice.classList.remove('hidden');
         });
       } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
         video.src = playableUrl;
@@ -138,20 +107,30 @@
       }
     }
 
-    function playChannel(ch) {
-      const streamUrl = getStreamUrl(ch);
-      playStream(streamUrl, ch.name, ch.category);
+    function selectChannel(ch, quality = null) {
+      currentChannel = ch;
+      currentName.textContent = ch.name;
+      currentCat.textContent = ch.category;
+
+      const availableQualities = Object.keys(ch.streams);
+      currentQuality = (quality && ch.streams[quality]) ? quality : availableQualities[0];
+
+      qualityControls.innerHTML = '';
+      availableQualities.forEach(q => {
+        const btn = document.createElement('button');
+        btn.textContent = q;
+        btn.className = `px-2.5 py-1 text-xs rounded-lg font-bold transition border ${q === currentQuality ? 'bg-red-500 text-white border-red-500' : 'bg-slate-800 text-slate-300 border-slate-700 hover:bg-slate-700'}`;
+        btn.onclick = () => selectChannel(ch, q);
+        qualityControls.appendChild(btn);
+      });
+
+      playStream(ch.streams[currentQuality], ch);
     }
 
     function render(list) {
       channelsList.innerHTML = '';
       count.textContent = list.length;
-      if (!list.length) {
-        channelsList.innerHTML = '<p class="text-slate-500 text-center py-4 text-sm">لا توجد قنوات مطابقة</p>';
-        return;
-      }
       list.forEach(ch => {
-        const isVerified = Boolean(STREAM_MAP[ch.id]);
         const item = document.createElement('div');
         item.className = "border border-slate-800 bg-slate-800/40 hover:bg-slate-800 p-2.5 rounded-xl cursor-pointer flex items-center justify-between gap-3 transition group";
         item.innerHTML = `
@@ -161,33 +140,23 @@
             </div>
             <div class="truncate">
               <p class="text-sm font-semibold text-white group-hover:text-red-400 transition truncate">${ch.name}</p>
-              <p class="text-xs text-slate-400 truncate">${ch.category} ${ch.country ? '• ' + ch.country : ''}</p>
+              <p class="text-xs text-slate-400 truncate">${ch.category}</p>
             </div>
           </div>
-          ${isVerified ? '<span class="text-[10px] text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 rounded-full shrink-0">شغال</span>' : ''}
+          <span class="text-[10px] text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 rounded-full shrink-0">شغال</span>
         `;
-        item.onclick = () => playChannel(ch);
+        item.onclick = () => selectChannel(ch);
         channelsList.appendChild(item);
       });
     }
 
-    async function init() {
-      try {
-        const res = await fetch('channels.json');
-        if (!res.ok) throw new Error();
-        allChannels = await res.json();
-        render(allChannels);
-      } catch (e) {
-        channelsList.innerHTML = '<p class="text-amber-400 text-xs text-center p-4">خطأ في تحميل ملف القنوات</p>';
-      }
-    }
-
     searchInput.addEventListener('input', (e) => {
       const q = e.target.value.toLowerCase().trim();
-      render(allChannels.filter(c => c.name.toLowerCase().includes(q) || (c.category && c.category.toLowerCase().includes(q))));
+      render(CHANNELS.filter(c => c.name.toLowerCase().includes(q) || c.category.toLowerCase().includes(q)));
     });
 
-    init();
+    render(CHANNELS);
+    selectChannel(CHANNELS[0]);
   </script>
 </body>
 </html>
