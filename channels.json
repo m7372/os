@@ -1,1 +1,272 @@
-[]
+[
+  {
+    "id": 63,
+    "name": "beIN Sports 1",
+    "category": "رياضة",
+    "logo": "https://nextdaywithme.shop/uploads/channels/a097c34e337a8c9294d62cdfc17bb577.webp",
+    "streams_count": 5,
+    "country": "قطر",
+    "flag": "🇶🇦"
+  },
+  {
+    "id": 65,
+    "name": "beIN Sports 2",
+    "category": "رياضة",
+    "logo": "https://nextdaywithme.shop/uploads/channels/06dc8a8bae7d49bc3033271575498a7e.webp",
+    "streams_count": 5,
+    "country": "قطر",
+    "flag": "🇶🇦"
+  },
+  {
+    "id": 66,
+    "name": "beIN Sports 3",
+    "category": "رياضة",
+    "logo": "https://nextdaywithme.shop/uploads/channels/305e84a2db716775c64388f60741decb.webp",
+    "streams_count": 5,
+    "country": "قطر",
+    "flag": "🇶🇦"
+  },
+  {
+    "id": 67,
+    "name": "beIN Sports 4",
+    "category": "رياضة",
+    "logo": "https://nextdaywithme.shop/uploads/channels/449d45498946dd728453b1a4041b67c7.webp",
+    "streams_count": 5,
+    "country": "قطر",
+    "flag": "🇶🇦"
+  },
+  {
+    "id": 82,
+    "name": "beIN Sports 5",
+    "category": "رياضة",
+    "logo": "https://nextdaywithme.shop/uploads/channels/7f1ec6d635bc895634c24c181120e80d.webp",
+    "streams_count": 5,
+    "country": "قطر",
+    "flag": "🇶🇦"
+  },
+  {
+    "id": 83,
+    "name": "beIN Sports 6",
+    "category": "رياضة",
+    "logo": "https://nextdaywithme.shop/uploads/channels/ff919dc1e73746e934dfd9f078d7e59d.webp",
+    "streams_count": 4,
+    "country": "قطر",
+    "flag": "🇶🇦"
+  },
+  {
+    "id": 101,
+    "name": "beIN Sports 7",
+    "category": "رياضة",
+    "logo": "https://nextdaywithme.shop/uploads/channels/fcec8d4f6e2e146452bb1f3b8e0aec67.webp",
+    "streams_count": 5,
+    "country": "قطر",
+    "flag": "🇶🇦"
+  },
+  {
+    "id": 126,
+    "name": "beIN Sports 8",
+    "category": "رياضة",
+    "logo": "https://nextdaywithme.shop/uploads/channels/5bc41cfd7a99da0bbec15f9c6c12a4b5.webp",
+    "streams_count": 4,
+    "country": "قطر",
+    "flag": "🇶🇦"
+  },
+  {
+    "id": 129,
+    "name": "beIN Sports 9",
+    "category": "رياضة",
+    "logo": "https://nextdaywithme.shop/uploads/channels/4d06ba05a00291f30f21ad8ad4ab4e1c.webp",
+    "streams_count": 4,
+    "country": "قطر",
+    "flag": "🇶🇦"
+  },
+  {
+    "id": 118,
+    "name": "ألوان الرياضية 1",
+    "category": "رياضة",
+    "logo": "https://nextdaywithme.shop/uploads/channels/e388a7d0afcdf9d98febecd08b9d1363.webp",
+    "streams_count": 2,
+    "country": "مصر",
+    "flag": "🇪🇬"
+  },
+  {
+    "id": 119,
+    "name": "ألوان الرياضية 2",
+    "category": "رياضة",
+    "logo": "https://nextdaywithme.shop/uploads/channels/e099b7c1206aa609dcdce6d3d0217bf7.webp",
+    "streams_count": 1,
+    "country": "مصر",
+    "flag": "🇪🇬"
+  },
+  {
+    "id": 120,
+    "name": "ألوان الرياضية 3",
+    "category": "رياضة",
+    "logo": "https://nextdaywithme.shop/uploads/channels/2c832f985657ef930b27fb87d1276f74.webp",
+    "streams_count": 1,
+    "country": "مصر",
+    "flag": "🇪🇬"
+  },
+  {
+    "id": 121,
+    "name": "ألوان الرياضية 4",
+    "category": "رياضة",
+    "logo": "https://nextdaywithme.shop/uploads/channels/d342050c57466a09c154526ccfcd5367.webp",
+    "streams_count": 1,
+    "country": "مصر",
+    "flag": "🇪🇬"
+  },
+  {
+    "id": 122,
+    "name": "ألوان الرياضية 5",
+    "category": "رياضة",
+    "logo": "https://nextdaywithme.shop/uploads/channels/02eb7a7de80acf1eabafd948737a6b7c.webp",
+    "streams_count": 1,
+    "country": "مصر",
+    "flag": "🇪🇬"
+  },
+  {
+    "id": 123,
+    "name": "ألوان الرياضية 6",
+    "category": "رياضة",
+    "logo": "https://nextdaywithme.shop/uploads/channels/508d6f3bebb5a79bc183c43ffbb79127.webp",
+    "streams_count": 1,
+    "country": "مصر",
+    "flag": "🇪🇬"
+  },
+  {
+    "id": 3,
+    "name": "MBC 1",
+    "category": "عام",
+    "logo": "https://nextdaywithme.shop/uploads/channels/3d6d0cc67d579516c868ce3caad7cb5a.webp",
+    "streams_count": 3,
+    "country": "السعودية",
+    "flag": "🇸🇦"
+  },
+  {
+    "id": 64,
+    "name": "MBC 2",
+    "category": "أفلام",
+    "logo": "https://nextdaywithme.shop/uploads/channels/0e232b0c1944d6d36317c00de6ae1a8e.webp",
+    "streams_count": 1,
+    "country": "السعودية",
+    "flag": "🇸🇦"
+  },
+  {
+    "id": 71,
+    "name": "MBC 3",
+    "category": "أطفال",
+    "logo": "https://nextdaywithme.shop/uploads/channels/eb231078733670089075e6e8a9fcd419.webp",
+    "streams_count": 2,
+    "country": "مصر",
+    "flag": "🇪🇬"
+  },
+  {
+    "id": 21,
+    "name": "MBC 4",
+    "category": "عام",
+    "logo": "https://nextdaywithme.shop/uploads/channels/5d93ea975396222e5dd9103471b50b50.webp",
+    "streams_count": 1,
+    "country": "الإمارات",
+    "flag": "🇦🇪"
+  },
+  {
+    "id": 23,
+    "name": "MBC 5",
+    "category": "مسلسلات",
+    "logo": "https://nextdaywithme.shop/uploads/channels/1fd691e66843790f48b85c71848eac2a.webp",
+    "streams_count": 1,
+    "country": "الإمارات",
+    "flag": "🇦🇪"
+  },
+  {
+    "id": 85,
+    "name": "MBC Action",
+    "category": "أفلام",
+    "logo": "https://nextdaywithme.shop/uploads/channels/6ba5f9490870a0106a1cec4fcd8ead0d.webp",
+    "streams_count": 2,
+    "country": "السعودية",
+    "flag": "🇸🇦"
+  },
+  {
+    "id": 13,
+    "name": "MBC Bollywood",
+    "category": "أفلام",
+    "logo": "https://nextdaywithme.shop/uploads/channels/6bb5693997d889ee0478d13e146b69a2.webp",
+    "streams_count": 1,
+    "country": "السعودية",
+    "flag": "🇸🇦"
+  },
+  {
+    "id": 22,
+    "name": "MBC Drama",
+    "category": "مسلسلات",
+    "logo": "https://nextdaywithme.shop/uploads/channels/b9fc08f2ed08f10aaca815836519d758.webp",
+    "streams_count": 1,
+    "country": "الإمارات",
+    "flag": "🇦🇪"
+  },
+  {
+    "id": 24,
+    "name": "MBC FM",
+    "category": "موسيقى",
+    "logo": "https://nextdaywithme.shop/uploads/channels/dd05e403f33c17fab115d3c43a09349d.webp",
+    "streams_count": 2,
+    "country": "الإمارات",
+    "flag": "🇦🇪"
+  },
+  {
+    "id": 17,
+    "name": "MBC Iraq",
+    "category": "عام",
+    "logo": "https://nextdaywithme.shop/uploads/channels/400215ececc82e56afb754dc4030eaae.webp",
+    "streams_count": 1,
+    "country": "العراق",
+    "flag": "🇮🇶"
+  },
+  {
+    "id": 1,
+    "name": "MBC Masr",
+    "category": "عام",
+    "logo": "https://nextdaywithme.shop/uploads/channels/13b00c44bae8154a5917ddc5339d8466.webp",
+    "streams_count": 2,
+    "country": "مصر",
+    "flag": "🇪🇬"
+  },
+  {
+    "id": 2,
+    "name": "MBC Masr 2",
+    "category": "عام",
+    "logo": "https://nextdaywithme.shop/uploads/channels/ae35e450db646ed1b845f73b09145c49.webp",
+    "streams_count": 2,
+    "country": "مصر",
+    "flag": "🇪🇬"
+  },
+  {
+    "id": 178,
+    "name": "MBC Masr Drama",
+    "category": "عام",
+    "logo": "https://nextdaywithme.shop/uploads/channels/3b504f70a6d3f06afadfd7650b3bba59.webp",
+    "streams_count": 1,
+    "country": "مصر",
+    "flag": "🇪🇬"
+  },
+  {
+    "id": 135,
+    "name": "MBC MAX",
+    "category": "أفلام",
+    "logo": "https://nextdaywithme.shop/uploads/channels/875cbb6efabce6e81578be2f0beda095.webp",
+    "streams_count": 1,
+    "country": "السعودية",
+    "flag": "🇸🇦"
+  },
+  {
+    "id": 202,
+    "name": "MBC Mood",
+    "category": "موسيقى",
+    "logo": "https://nextdaywithme.shop/uploads/channels/e26b4e9250903a3c4ad26b87cd2a157b.webp",
+    "streams_count": 2,
+    "country": "السعودية",
+    "flag": "🇸🇦"
+  }
+]
