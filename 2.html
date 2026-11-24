@@ -44,6 +44,20 @@
     .section-tab.active { background-color: #ffffff !important; color: #000000 !important; font-weight: 700; }
     .cat-btn.active { background-color: #ffffff !important; color: #000000 !important; font-weight: 700; border-color: #ffffff !important; }
     .channel-item.active { border-color: #e50914 !important; background: rgba(229, 9, 20, 0.12) !important; }
+    
+    /* تنسيق خانات الإدخال */
+    .edit-input {
+      background-color: #111;
+      border: 1px solid #333;
+      color: #fff;
+      border-radius: 4px;
+      padding: 2px 6px;
+      font-size: 11px;
+      width: 100%;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+    .edit-input:focus { border-color: #e50914; }
   </style>
 </head>
 <body class="bg-black text-white flex flex-col min-h-screen">
@@ -190,15 +204,19 @@
 
     // إضافة الأرقام الجديدة للقائمة كقنوات منفصلة
     NEW_STREAMS.forEach((num, index) => {
+      const savedName = localStorage.getItem(`ch_name_${num}`);
+      const savedQuality = localStorage.getItem(`ch_quality_${num}`);
       EMBEDDED_CHANNELS.push({
-        id: 2000 + index, // معرف فريد لتجنب التداخل
-        name: `قناة ${num}`,
-        category: 'رياضة', // تصنيف افتراضي
-        logo: '', // بدون شعار
+        id: 2000 + index,
+        name: savedName || `قناة ${num}`,
+        category: 'رياضة',
+        logo: '',
         streams_count: 1,
         country: 'غير محدد',
         flag: '🌐',
-        stream_url: `${STREAM_BASE}${num}.css` // الرابط المباشر
+        stream_url: `${STREAM_BASE}${num}.css`,
+        custom_num: num,
+        custom_quality: savedQuality || ''
       });
     });
 
@@ -283,7 +301,13 @@
 
       const rawUrl = getStreamUrl(ch);
       infoNumber.textContent = 'رقم: ' + getLastNumber(rawUrl);
-      infoQuality.textContent = 'جودة: ...';
+      
+      // إذا كان هناك جودة محفوظة يدوياً، نعرضها، وإلا نعرض ...
+      if (ch.custom_quality) {
+        infoQuality.textContent = 'جودة: ' + ch.custom_quality;
+      } else {
+        infoQuality.textContent = 'جودة: ...';
+      }
 
       statusBadge.textContent = 'جاري الاتصال...';
       statusBadge.className = 'text-[10px] sm:text-xs bg-amber-950/50 text-amber-300 border border-amber-800/50 px-2.5 py-1 rounded-full font-medium';
@@ -391,6 +415,9 @@
         if (hls) hls.currentLevel = -1;
         qualityMenu.classList.add('hidden');
         showToast('الجودة: تلقائي');
+        if (activeChannel && activeChannel.custom_quality) {
+          infoQuality.textContent = 'جودة: ' + activeChannel.custom_quality;
+        }
       };
       qualityList.appendChild(autoBtn);
       if (!levels || levels.length === 0) return;
@@ -403,7 +430,7 @@
           if (hls) hls.currentLevel = idx;
           qualityMenu.classList.add('hidden');
           showToast(`الجودة: ${label}`);
-          infoQuality.textContent = 'جودة: ' + (lvl.height ? lvl.height + 'p' : 'غير معروفة');
+          if (lvl.height) infoQuality.textContent = 'جودة: ' + lvl.height + 'p';
         };
         qualityList.appendChild(btn);
       });
@@ -476,6 +503,26 @@
       });
     }
 
+    // دالة حفظ الاسم
+    window.saveName = function(id, num, val) {
+      localStorage.setItem(`ch_name_${num}`, val);
+      const ch = EMBEDDED_CHANNELS.find(c => c.id === id);
+      if (ch) ch.name = val || `قناة ${num}`;
+      if (activeChannel && activeChannel.id === id) {
+        currentName.textContent = ch.name;
+      }
+    };
+
+    // دالة حفظ الجودة
+    window.saveQuality = function(id, num, val) {
+      localStorage.setItem(`ch_quality_${num}`, val);
+      const ch = EMBEDDED_CHANNELS.find(c => c.id === id);
+      if (ch) ch.custom_quality = val;
+      if (activeChannel && activeChannel.id === id) {
+        infoQuality.textContent = 'جودة: ' + (val || '—');
+      }
+    };
+
     function renderItems() {
       const query = (searchInput.value || '').toLowerCase().trim();
       contentList.innerHTML = '';
@@ -500,22 +547,45 @@
           const isActive = activeChannel && activeChannel.id === ch.id;
           const item = document.createElement('div');
           item.className = `channel-item border border-neutral-900 bg-[#0d0d0d] hover:bg-[#151515] p-2 rounded-xl cursor-pointer flex items-center justify-between gap-3 transition group ${isActive ? 'active' : ''}`;
-          item.innerHTML = `
-            <div class="flex items-center gap-2.5 truncate">
-              <div class="w-9 h-9 rounded-lg bg-black border border-neutral-800 flex items-center justify-center overflow-hidden shrink-0 text-sm">
-                ${ch.logo ? `<img src="${ch.logo}" class="w-full h-full object-contain" onerror="this.parentElement.textContent='📺'">` : '📺'}
+          
+          // إذا كانت القناة من القنوات المضافة حديثاً (لديها custom_num)
+          if (ch.custom_num) {
+            item.innerHTML = `
+              <div class="flex flex-col gap-1 w-full">
+                <div class="flex items-center justify-between gap-2 w-full">
+                  <div class="flex items-center gap-2">
+                    <span class="text-xs font-bold text-red-400 bg-red-950/40 border border-red-900/60 px-2 py-0.5 rounded">${ch.custom_num}</span>
+                    <div class="flex gap-1">
+                      <input type="text" class="edit-input w-24 sm:w-32" placeholder="اسم القناة" value="${ch.name !== `قناة ${ch.custom_num}` ? ch.name : ''}" onchange="saveName(${ch.id}, ${ch.custom_num}, this.value)">
+                      <input type="text" class="edit-input w-16 sm:w-20" placeholder="الجودة" value="${ch.custom_quality}" onchange="saveQuality(${ch.id}, ${ch.custom_num}, this.value)">
+                    </div>
+                  </div>
+                  <button class="text-[10px] bg-emerald-600 hover:bg-emerald-700 text-white px-2 py-1 rounded" onclick="playChannel(EMBEDDED_CHANNELS.find(c => c.id === ${ch.id}))">تشغيل</button>
+                </div>
               </div>
-              <div class="truncate">
-                <p class="text-xs sm:text-sm font-semibold text-white group-hover:text-red-400 transition truncate">${ch.name}</p>
-                <p class="text-[11px] text-neutral-400 truncate">${ch.category || 'عام'} ${ch.country ? '• ' + ch.country : ''}</p>
+            `;
+          } else {
+            // القنوات القديمة
+            item.innerHTML = `
+              <div class="flex items-center gap-2.5 truncate">
+                <div class="w-9 h-9 rounded-lg bg-black border border-neutral-800 flex items-center justify-center overflow-hidden shrink-0 text-sm">
+                  ${ch.logo ? `<img src="${ch.logo}" class="w-full h-full object-contain" onerror="this.parentElement.textContent='📺'">` : '📺'}
+                </div>
+                <div class="truncate">
+                  <p class="text-xs sm:text-sm font-semibold text-white group-hover:text-red-400 transition truncate">${ch.name}</p>
+                  <p class="text-[11px] text-neutral-400 truncate">${ch.category || 'عام'} ${ch.country ? '• ' + ch.country : ''}</p>
+                </div>
               </div>
-            </div>
-            <div class="flex items-center gap-1.5 shrink-0">
-              ${isVerified ? '<span class="text-[10px] text-emerald-400 bg-emerald-950/60 border border-emerald-800/40 px-2 py-0.5 rounded-full">شغال</span>' : ''}
-              ${isActive ? '<span class="w-2 h-2 rounded-full bg-red-500 animate-ping"></span>' : ''}
-            </div>
-          `;
-          item.onclick = () => playChannel(ch);
+              <div class="flex items-center gap-1.5 shrink-0">
+                ${isVerified ? '<span class="text-[10px] text-emerald-400 bg-emerald-950/60 border border-emerald-800/40 px-2 py-0.5 rounded-full">شغال</span>' : ''}
+                ${isActive ? '<span class="w-2 h-2 rounded-full bg-red-500 animate-ping"></span>' : ''}
+              </div>
+            `;
+            item.onclick = (e) => {
+              if (e.target.tagName !== 'INPUT') playChannel(ch);
+            };
+          }
+          
           contentList.appendChild(item);
         });
 
