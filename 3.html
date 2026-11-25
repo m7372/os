@@ -1,0 +1,676 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <title>AlameeereTV - المشغل المتطور</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+  <style>
+    :root {
+      --sat: env(safe-area-inset-top, 0px);
+      --sab: env(safe-area-inset-bottom, 0px);
+      --sal: env(safe-area-inset-left, 0px);
+      --sar: env(safe-area-inset-right, 0px);
+    }
+    * {
+      box-sizing: border-box;
+      -webkit-tap-highlight-color: transparent;
+      user-select: none;
+    }
+    html, body {
+      margin: 0;
+      padding: 0;
+      width: 100vw;
+      height: 100vh;
+      overflow: hidden;
+      background-color: #000000 !important;
+      color: #ffffff;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    }
+    
+    /* Video Aspect Modes */
+    video.mode-contain {
+      object-fit: contain !important;
+      aspect-ratio: auto !important;
+      width: 100vw;
+      height: 100vh;
+    }
+    video.mode-fill {
+      object-fit: fill !important;
+      aspect-ratio: auto !important;
+      width: 100vw;
+      height: 100vh;
+    }
+    video.mode-cover {
+      /* تجاوز حدود الكاميرا والنوتش بحرية تامة */
+      object-fit: cover !important;
+      aspect-ratio: auto !important;
+      position: fixed;
+      top: 0;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      width: 100vw !important;
+      height: 100vh !important;
+      max-width: none !important;
+      max-height: none !important;
+    }
+    video.mode-16-9 {
+      object-fit: fill !important;
+      aspect-ratio: 16/9 !important;
+      width: 100vw;
+      height: 100vh;
+    }
+
+    /* Custom Scrollbars */
+    ::-webkit-scrollbar { width: 4px; height: 4px; }
+    ::-webkit-scrollbar-track { background: #0a0a0a; }
+    ::-webkit-scrollbar-thumb { background: #262626; border-radius: 999px; }
+    ::-webkit-scrollbar-thumb:hover { background: #404040; }
+
+    /* Brand Glow Animations */
+    .brand-glow {
+      background: linear-gradient(135deg, #ffffff 0%, #a1a1aa 50%, #ffffff 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      text-shadow: 0 0 24px rgba(255, 255, 255, 0.35);
+    }
+    .red-glow {
+      box-shadow: 0 0 20px rgba(220, 38, 38, 0.45);
+    }
+  </style>
+</head>
+<body class="bg-black text-white w-screen h-screen overflow-hidden flex flex-col justify-center items-center relative">
+
+  <!-- ================= VIDEO ELEMENT ================= -->
+  <div id="playerContainer" class="relative w-full h-full bg-black flex items-center justify-center overflow-hidden">
+    <video 
+      id="videoPlayer" 
+      class="mode-contain w-full h-full bg-black transition-all duration-200" 
+      playsinline 
+      webkit-playsinline 
+      x5-playsinline 
+      autoplay
+    ></video>
+
+    <!-- Heart of Player Brand Logo (في قلب المشغل) -->
+    <div id="centerBrand" class="absolute inset-0 pointer-events-none flex flex-col items-center justify-center transition-opacity duration-500 z-10">
+      <div class="flex items-center gap-2 px-5 py-2.5 rounded-2xl bg-black/50 backdrop-blur-md border border-neutral-800/80 shadow-2xl">
+        <span class="text-red-500 font-extrabold text-2xl tracking-wider">▲</span>
+        <h1 class="brand-glow text-2xl sm:text-3xl font-black tracking-widest uppercase">AlameeereTV</h1>
+      </div>
+      <p id="centerSubtext" class="text-neutral-400 text-xs mt-2 font-medium">اختر قناة لبدء البث المباشر</p>
+    </div>
+
+    <!-- Loading / Status Spinner -->
+    <div id="spinner" class="hidden absolute inset-0 pointer-events-none flex items-center justify-center z-20 bg-black/40">
+      <div class="w-12 h-12 border-4 border-neutral-700 border-t-red-600 rounded-full animate-spin"></div>
+    </div>
+
+    <!-- On-Screen Notification Toast (Mode / Quality / Error) -->
+    <div id="toast" class="absolute top-16 sm:top-20 right-1/2 translate-x-1/2 pointer-events-none opacity-0 transition-opacity duration-300 z-30 bg-neutral-900/95 border border-neutral-700 text-white text-xs sm:text-sm px-4 py-2 rounded-xl shadow-2xl flex items-center gap-2">
+      <span id="toastIcon">📺</span>
+      <span id="toastMsg">تم التبديل</span>
+    </div>
+
+    <!-- ================= CONTROLS OVERLAY ================= -->
+    <div id="controlsOverlay" class="absolute inset-0 flex flex-col justify-between transition-opacity duration-300 z-20 pointer-events-auto bg-gradient-to-t from-black/90 via-transparent to-black/80 p-3 sm:p-5" style="padding-top: max(16px, var(--sat)); padding-bottom: max(16px, var(--sab)); padding-left: max(16px, var(--sal)); padding-right: max(16px, var(--sar));">
+      
+      <!-- Top Control Bar -->
+      <div class="flex items-center justify-between w-full">
+        
+        <!-- Left: Channel Info & Live Status -->
+        <div class="flex items-center gap-3">
+          <div id="activeLogoContainer" class="w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-neutral-950 border border-neutral-800 p-1 flex items-center justify-center shrink-0 overflow-hidden shadow">
+            <span id="activeLogoFallback" class="text-lg">📺</span>
+            <img id="activeLogoImg" src="" class="w-full h-full object-contain hidden" alt="logo" onerror="this.classList.add('hidden'); document.getElementById('activeLogoFallback').classList.remove('hidden');">
+          </div>
+          <div class="flex flex-col">
+            <div class="flex items-center gap-2">
+              <h2 id="channelTitle" class="text-sm sm:text-base font-bold text-white tracking-wide truncate max-w-[180px] sm:max-w-xs">AlameeereTV</h2>
+              <span id="liveBadge" class="hidden text-[10px] bg-red-600/90 text-white font-bold px-1.5 py-0.5 rounded tracking-wider uppercase animate-pulse">مباشر</span>
+            </div>
+            <div class="flex items-center gap-2 text-xs text-neutral-400">
+              <span id="groupBadge" class="text-neutral-300">المجموعات</span>
+              <span>•</span>
+              <span id="qualityCurrentBadge" class="text-neutral-400 font-mono">--</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Right: Top Buttons (Groups Icon + Aspect Ratio) -->
+        <div class="flex items-center gap-2 sm:gap-3">
+          <!-- Groups & Channels Button (أيقونة المجموعات) -->
+          <button 
+            id="btnToggleGroups" 
+            onclick="toggleGroupsDrawer()" 
+            class="flex items-center gap-2 px-3 py-2 rounded-xl bg-neutral-900/90 hover:bg-neutral-800 border border-neutral-700/80 text-white transition active:scale-95 shadow-lg"
+            title="المجموعات والقنوات"
+          >
+            <svg class="w-5 h-5 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h7"></path>
+            </svg>
+            <span class="text-xs sm:text-sm font-semibold">المجموعات</span>
+          </button>
+
+          <!-- Aspect Ratio Button (4 القياسات مع تجاوز حدود الكاميرا) -->
+          <button 
+            id="btnAspect" 
+            onclick="cycleAspectMode()" 
+            class="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-neutral-900/90 hover:bg-neutral-800 border border-neutral-700/80 text-white transition active:scale-95 shadow-lg"
+            title="أبعاد وقياسات الفيديو"
+          >
+            <svg class="w-5 h-5 text-sky-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4"></path>
+            </svg>
+            <span id="aspectModeText" class="text-xs sm:text-sm font-mono font-medium hidden sm:inline">احتواء</span>
+          </button>
+        </div>
+
+      </div>
+
+      <!-- Center Click Area to Toggle Controls -->
+      <div class="flex-1 w-full" onclick="handleCenterTap()"></div>
+
+      <!-- Bottom Control Bar -->
+      <div class="flex items-center justify-between w-full pt-2">
+        
+        <!-- Left: Play/Pause & Mute -->
+        <div class="flex items-center gap-2 sm:gap-4">
+          <!-- Play / Pause -->
+          <button id="btnPlay" onclick="togglePlay()" class="w-10 h-10 rounded-xl bg-white text-black flex items-center justify-center hover:bg-neutral-200 transition active:scale-95 shadow">
+            <svg id="iconPlay" class="w-5 h-5 hidden" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+            <svg id="iconPause" class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>
+          </button>
+
+          <!-- Mute / Unmute -->
+          <button id="btnMute" onclick="toggleMute()" class="w-10 h-10 rounded-xl bg-neutral-900/90 text-white border border-neutral-700/80 flex items-center justify-center hover:bg-neutral-800 transition active:scale-95 shadow">
+            <svg id="iconVolume" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z"></path>
+            </svg>
+            <svg id="iconMuted" class="w-5 h-5 hidden text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z"></path>
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2"></path>
+            </svg>
+          </button>
+        </div>
+
+        <!-- Right: Quality Switcher & Fullscreen -->
+        <div class="flex items-center gap-2 sm:gap-3 relative">
+          
+          <!-- Quality Button (زر الجودات كأنه رابط يحمل جميع الجودات) -->
+          <div class="relative">
+            <button 
+              id="btnQuality" 
+              onclick="toggleQualityMenu(event)" 
+              class="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-neutral-900/90 hover:bg-neutral-800 border border-neutral-700/80 text-white transition active:scale-95 shadow-lg"
+              title="الجودات المتاحة"
+            >
+              <span class="text-xs text-neutral-400 font-medium">جودة:</span>
+              <span id="activeQualityLabel" class="text-xs sm:text-sm font-bold text-amber-400 font-mono">--</span>
+              <svg class="w-3.5 h-3.5 text-neutral-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+              </svg>
+            </button>
+
+            <!-- Quality Selection Popup Menu -->
+            <div 
+              id="qualityMenu" 
+              class="hidden absolute bottom-12 left-0 sm:left-auto sm:right-0 w-44 bg-neutral-950/95 backdrop-blur-xl border border-neutral-700/80 rounded-2xl shadow-2xl p-2 z-50 text-right"
+            >
+              <div class="text-[11px] font-bold text-neutral-400 px-2 py-1 border-b border-neutral-800 mb-1 flex items-center justify-between">
+                <span>الجودات المتاحة</span>
+                <span class="text-amber-400 text-[10px]">تلقائي (الأقل أولاً)</span>
+              </div>
+              <div id="qualityList" class="flex flex-col gap-1 max-h-52 overflow-y-auto">
+                <!-- Injected dynamically -->
+              </div>
+            </div>
+          </div>
+
+          <!-- Fullscreen Button -->
+          <button 
+            onclick="toggleFullscreen()" 
+            class="w-10 h-10 rounded-xl bg-neutral-900/90 text-white border border-neutral-700/80 flex items-center justify-center hover:bg-neutral-800 transition active:scale-95 shadow"
+            title="ملء الشاشة"
+          >
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4"></path>
+            </svg>
+          </button>
+
+        </div>
+
+      </div>
+
+    </div>
+
+    <!-- ================= DUAL-PANEL GROUPS & CHANNELS DRAWER ================= -->
+    <!-- بالضغط على المجموعة تفتح بجوارها مباشرتاً قائمة القنوات -->
+    <div 
+      id="groupsDrawer" 
+      class="fixed inset-y-0 right-0 z-40 w-full sm:w-[540px] md:w-[620px] bg-black/95 backdrop-blur-2xl border-l border-neutral-800 shadow-2xl flex flex-col translate-x-full transition-transform duration-300 ease-out"
+      style="padding-top: max(12px, var(--sat)); padding-bottom: max(12px, var(--sab));"
+    >
+      
+      <!-- Drawer Header -->
+      <div class="px-4 py-3 border-b border-neutral-800 flex items-center justify-between">
+        <div class="flex items-center gap-2">
+          <span class="w-2.5 h-2.5 rounded-full bg-red-600 animate-ping"></span>
+          <h3 class="font-bold text-base text-white">المجموعات والقنوات</h3>
+        </div>
+        <button onclick="toggleGroupsDrawer(false)" class="p-1.5 rounded-lg bg-neutral-900 text-neutral-400 hover:text-white border border-neutral-800">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+        </button>
+      </div>
+
+      <!-- Side-by-side Dual Panels Container -->
+      <div class="flex-1 flex overflow-hidden">
+        
+        <!-- Right Column: Groups List (المجموعات / الباقات) -->
+        <div class="w-2/5 sm:w-1/2 border-l border-neutral-800/80 overflow-y-auto p-2 space-y-1 bg-neutral-950/50">
+          <div class="text-[11px] font-bold text-neutral-400 px-2 py-1 uppercase tracking-wider">اختر الباقة</div>
+          <div id="groupsList" class="space-y-1">
+            <!-- Injected dynamically -->
+          </div>
+        </div>
+
+        <!-- Left Column: Channels in selected Group (قائمة القنوات بجوارها مباشرة) -->
+        <div class="w-3/5 sm:w-1/2 overflow-y-auto p-2 space-y-1 bg-black">
+          <div class="flex items-center justify-between px-2 py-1 text-[11px] font-bold text-neutral-400 border-b border-neutral-900 mb-1">
+            <span id="selectedGroupTitle">القنوات</span>
+            <span id="selectedGroupCount" class="text-neutral-300 font-mono">0</span>
+          </div>
+          <div id="channelsList" class="space-y-1">
+            <!-- Injected dynamically -->
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Drawer Footer -->
+      <div class="px-4 py-2 bg-neutral-950 border-t border-neutral-900 flex items-center justify-between text-[11px] text-neutral-400">
+        <span>AlameeereTV Player</span>
+        <span class="text-emerald-400 font-mono">تشغيل فوري على أقل جودة</span>
+      </div>
+
+    </div>
+
+  </div>
+
+  <!-- ================= SCRIPT LOGIC ================= -->
+  <script>
+    // Configuration & Data
+    const WORKER_URL = 'https://os.m737217130.workers.dev/';
+    const STREAM_BASE = 'http://newlb.getourxufiles.shop:8080/assets/CsrsaFYFKo4MuziKdPkb1BElYSLJUI3XQ6tfXlnT107b0x2Ei6/myvs8QGJp1i2Uju0lgp8zwhBgV70LX6U5bjpYiiaSDyQEd1lTR/';
+
+    const CHANNELS_DB = [{"id": "MBC 1", "name": "MBC 1", "logo": "https://nextdaywithme.shop/uploads/channels/3d6d0cc67d579516c868ce3caad7cb5a.webp", "qualities": [{"id": 20, "label": "1080p", "qnum": 1080}], "group": "باقة MBC"}, {"id": "MBC 2", "name": "MBC 2", "logo": "https://nextdaywithme.shop/uploads/channels/0e232b0c1944d6d36317c00de6ae1a8e.webp", "qualities": [{"id": 23, "label": "570p", "qnum": 570}], "group": "باقة MBC"}, {"id": "MBC 3", "name": "MBC 3", "logo": "https://nextdaywithme.shop/uploads/channels/eb231078733670089075e6e8a9fcd419.webp", "qualities": [{"id": 26, "label": "720p", "qnum": 720}], "group": "باقة MBC"}, {"id": "MBC Action", "name": "MBC Action", "logo": "https://nextdaywithme.shop/uploads/channels/6ba5f9490870a0106a1cec4fcd8ead0d.webp", "qualities": [{"id": 29, "label": "720p", "qnum": 720}, {"id": 1409, "label": "1080p", "qnum": 1080}], "group": "باقة MBC"}, {"id": "MBC مصر 1", "name": "MBC مصر 1", "logo": "https://nextdaywithme.shop/uploads/channels/13b00c44bae8154a5917ddc5339d8466.webp", "qualities": [{"id": 32, "label": "1080p", "qnum": 1080}], "group": "باقة MBC"}, {"id": "MBC مصر 2", "name": "MBC مصر 2", "logo": "https://nextdaywithme.shop/uploads/channels/13b00c44bae8154a5917ddc5339d8466.webp", "qualities": [{"id": 35, "label": "1050p", "qnum": 1050}], "group": "باقة MBC"}, {"id": "الرابعة العامة", "name": "الرابعة العامة", "logo": "https://nextdaywithme.shop/uploads/channels/0e11365eeeadb131669582ee445cecbf.webp", "qualities": [{"id": 38, "label": "720p", "qnum": 720}], "group": "دراما وقنوات عامة"}, {"id": "ثمانية 1", "name": "ثمانية 1", "logo": "https://nextdaywithme.shop/uploads/channels/f20bbd05d94ff48ebde36d24443e2446.webp", "qualities": [{"id": 1454, "label": "240p", "qnum": 240}, {"id": 41, "label": "570p", "qnum": 570}, {"id": 590, "label": "720p", "qnum": 720}, {"id": 593, "label": "1080p", "qnum": 1080}], "group": "باقة ثمانية 8"}, {"id": "DMC", "name": "DMC", "logo": "https://nextdaywithme.shop/uploads/channels/505ecd4cdef151511c0e90b567421483.webp", "qualities": [{"id": 44, "label": "720p", "qnum": 720}], "group": "دراما وقنوات عامة"}, {"id": "DMC دراما", "name": "DMC دراما", "logo": "https://nextdaywithme.shop/uploads/channels/fc4f7dd518e7d9ad6f91a49c09776581.webp", "qualities": [{"id": 47, "label": "570p", "qnum": 570}], "group": "دراما وقنوات عامة"}, {"id": "ON دراما", "name": "ON دراما", "logo": "https://nextdaywithme.shop/uploads/channels/cc20970d139d9cefd4a697d82d63034b.webp", "qualities": [{"id": 50, "label": "570p", "qnum": 570}], "group": "دراما وقنوات عامة"}, {"id": "ON Sport 1", "name": "ON Sport 1", "logo": "https://nextdaywithme.shop/uploads/channels/e6f0f2e9e0d026121bcdb875b4e84659.webp", "qualities": [{"id": 1412, "label": "240p", "qnum": 240}, {"id": 1415, "label": "480p", "qnum": 480}, {"id": 53, "label": "1080p", "qnum": 1080}], "group": "أون سبورت ON"}, {"id": "ON Sport MAX", "name": "ON Sport MAX", "logo": "https://nextdaywithme.shop/uploads/channels/9d92aca83e1b9a6b3fef841683fe92bc.webp", "qualities": [{"id": 1436, "label": "240p", "qnum": 240}, {"id": 1439, "label": "480p", "qnum": 480}, {"id": 56, "label": "1080p", "qnum": 1080}], "group": "أون سبورت ON"}, {"id": "إذاعة راديو", "name": "إذاعة راديو", "logo": "", "qualities": [{"id": 59, "label": "Audio", "qnum": 500}, {"id": 71, "label": "Audio", "qnum": 500}], "group": "أفلام وراديو"}, {"id": "جيم JEEM TV", "name": "جيم JEEM TV", "logo": "https://nextdaywithme.shop/uploads/channels/d114aafc04ed46139325686f96a90a5f.webp", "qualities": [{"id": 62, "label": "1080p", "qnum": 1080}], "group": "قنوات الأطفال"}, {"id": "روتانا كيدز", "name": "روتانا كيدز", "logo": "https://nextdaywithme.shop/uploads/channels/ae5144a2afe1fe20d28b0a1969eeca32.webp", "qualities": [{"id": 65, "label": "720p", "qnum": 720}], "group": "قنوات الأطفال"}, {"id": "روتانا سينما", "name": "روتانا سينما", "logo": "https://nextdaywithme.shop/uploads/channels/f3508ad1c38729efd87acf4d9c1d1349.webp", "qualities": [{"id": 68, "label": "570p", "qnum": 570}], "group": "أفلام وراديو"}, {"id": "صدى البلد", "name": "صدى البلد", "logo": "https://nextdaywithme.shop/uploads/channels/22b9dd6723145d25a03162ad13c9aedc.webp", "qualities": [{"id": 74, "label": "1080p", "qnum": 1080}], "group": "دراما وقنوات عامة"}, {"id": "صدى البلد 2", "name": "صدى البلد 2", "logo": "https://nextdaywithme.shop/uploads/channels/22b9dd6723145d25a03162ad13c9aedc.webp", "qualities": [{"id": 77, "label": "1080p", "qnum": 1080}], "group": "دراما وقنوات عامة"}, {"id": "صدى البلد دراما", "name": "صدى البلد دراما", "logo": "https://nextdaywithme.shop/uploads/channels/e78703e0689afa6649edbb2f4c524c46.webp", "qualities": [{"id": 80, "label": "1080p", "qnum": 1080}], "group": "دراما وقنوات عامة"}, {"id": "راديو أطفال", "name": "راديو أطفال", "logo": "", "qualities": [{"id": 83, "label": "Audio", "qnum": 500}, {"id": 521, "label": "Audio", "qnum": 500}], "group": "أفلام وراديو"}, {"id": "ثمانية 2", "name": "ثمانية 2", "logo": "https://nextdaywithme.shop/uploads/channels/a7624339b545f8adbb6abb3845e26627.webp", "qualities": [{"id": 1457, "label": "240p", "qnum": 240}, {"id": 359, "label": "570p", "qnum": 570}, {"id": 596, "label": "720p", "qnum": 720}, {"id": 599, "label": "1080p", "qnum": 1080}], "group": "باقة ثمانية 8"}, {"id": "ثمانية 3", "name": "ثمانية 3", "logo": "https://nextdaywithme.shop/uploads/channels/9f30f8f59647c466701b220613b16d8c.webp", "qualities": [{"id": 1460, "label": "240p", "qnum": 240}, {"id": 362, "label": "570p", "qnum": 570}, {"id": 602, "label": "720p", "qnum": 720}, {"id": 605, "label": "1080p", "qnum": 1080}], "group": "باقة ثمانية 8"}, {"id": "شاهد سبورت", "name": "شاهد سبورت", "logo": "https://nextdaywithme.shop/uploads/channels/bfe3651fe49e9bce3ede00abdfc947b5.webp", "qualities": [{"id": 365, "label": "570p", "qnum": 570}, {"id": 368, "label": "1080p", "qnum": 1080}], "group": "قنوات رياضية منوعة"}, {"id": "الكأس 1", "name": "الكأس 1", "logo": "https://nextdaywithme.shop/uploads/channels/42cf49229c816ec7d185ef544c722b7b.webp", "qualities": [{"id": 380, "label": "570p", "qnum": 570}, {"id": 1478, "label": "720p", "qnum": 720}, {"id": 1481, "label": "1080p", "qnum": 1080}], "group": "قنوات الكأس"}, {"id": "الكأس 2", "name": "الكأس 2", "logo": "https://nextdaywithme.shop/uploads/channels/f2219a0eb15101600b96fcca7341bf98.webp", "qualities": [{"id": 383, "label": "570p", "qnum": 570}, {"id": 1484, "label": "720p", "qnum": 720}, {"id": 1487, "label": "1080p", "qnum": 1080}], "group": "قنوات الكأس"}, {"id": "الكأس 3", "name": "الكأس 3", "logo": "https://nextdaywithme.shop/uploads/channels/ad5d0ebbd674d12fe5b7d91f733cc4cd.webp", "qualities": [{"id": 386, "label": "570p", "qnum": 570}, {"id": 1490, "label": "720p", "qnum": 720}, {"id": 1493, "label": "1080p", "qnum": 1080}], "group": "قنوات الكأس"}, {"id": "الكأس 4", "name": "الكأس 4", "logo": "https://nextdaywithme.shop/uploads/channels/27def98e8b30fcedf93cb7b1badbf7ac.webp", "qualities": [{"id": 389, "label": "570p", "qnum": 570}, {"id": 1496, "label": "720p", "qnum": 720}, {"id": 1499, "label": "1080p", "qnum": 1080}], "group": "قنوات الكأس"}, {"id": "StarzPlay Sports 1", "name": "StarzPlay Sports 1", "logo": "https://nextdaywithme.shop/uploads/channels/5f2ce666ac8ac24077c75ea6813af80a.webp", "qualities": [{"id": 1469, "label": "240p", "qnum": 240}, {"id": 641, "label": "570p", "qnum": 570}, {"id": 392, "label": "720p", "qnum": 720}, {"id": 644, "label": "720p", "qnum": 720}], "group": "ستارزبلاي StarzPlay"}, {"id": "StarzPlay Sports 2", "name": "StarzPlay Sports 2", "logo": "https://nextdaywithme.shop/uploads/channels/8521dda1b1a231080d77e8a684ae42c4.webp", "qualities": [{"id": 1472, "label": "240p", "qnum": 240}, {"id": 647, "label": "570p", "qnum": 570}, {"id": 650, "label": "720p", "qnum": 720}, {"id": 395, "label": "1080p", "qnum": 1080}], "group": "ستارزبلاي StarzPlay"}, {"id": "StarzPlay Sports 3", "name": "StarzPlay Sports 3", "logo": "https://nextdaywithme.shop/uploads/channels/c8b306970d3e1001b2f4a1ad7d6b4c1a.webp", "qualities": [{"id": 1475, "label": "240p", "qnum": 240}, {"id": 653, "label": "720p", "qnum": 720}, {"id": 398, "label": "1080p", "qnum": 1080}], "group": "ستارزبلاي StarzPlay"}, {"id": "أبوظبي الرياضية 1", "name": "أبوظبي الرياضية 1", "logo": "https://nextdaywithme.shop/uploads/channels/b1895c8bcad9fe764ec25f17c6636da8.webp", "qualities": [{"id": 416, "label": "1080p", "qnum": 1080}], "group": "قنوات رياضية منوعة"}, {"id": "أبوظبي الرياضية 2", "name": "أبوظبي الرياضية 2", "logo": "https://nextdaywithme.shop/uploads/channels/8d130de35fe372a24a3ace30c8ff57cf.webp", "qualities": [{"id": 419, "label": "720p", "qnum": 720}], "group": "قنوات رياضية منوعة"}, {"id": "المغربية الرياضية", "name": "المغربية الرياضية", "logo": "https://nextdaywithme.shop/uploads/channels/71a595d8c53bcd9eca048009b8cd0db9.webp", "qualities": [{"id": 443, "label": "1080p", "qnum": 1080}], "group": "قنوات رياضية منوعة"}, {"id": "براعم للأطفال", "name": "براعم للأطفال", "logo": "https://nextdaywithme.shop/uploads/channels/993eac3b862b2245b923b1c4070aa26c.webp", "qualities": [{"id": 512, "label": "1080p", "qnum": 1080}], "group": "قنوات الأطفال"}, {"id": "طيور الجنة", "name": "طيور الجنة", "logo": "https://nextdaywithme.shop/uploads/channels/d46cdba945ddef99c1fe41a410c85fb0.webp", "qualities": [{"id": 515, "label": "570p", "qnum": 570}], "group": "قنوات الأطفال"}, {"id": "كراميش للأطفال", "name": "كراميش للأطفال", "logo": "https://nextdaywithme.shop/uploads/channels/4e51cdb475ea2e865d04a0f8aa1d290f.webp", "qualities": [{"id": 518, "label": "570p", "qnum": 570}], "group": "قنوات الأطفال"}, {"id": "ON Sport PLUS", "name": "ON Sport PLUS", "logo": "https://nextdaywithme.shop/uploads/channels/57de04937d65c73b9a0715401a225c50.webp", "qualities": [{"id": 1442, "label": "240p", "qnum": 240}, {"id": 1445, "label": "480p", "qnum": 480}, {"id": 638, "label": "1080p", "qnum": 1080}], "group": "أون سبورت ON"}, {"id": "سوريا 2", "name": "سوريا 2", "logo": "https://nextdaywithme.shop/uploads/channels/68b1da6e0a5e7002dffc8c3ec9dece4f.webp", "qualities": [{"id": 755, "label": "570p", "qnum": 570}], "group": "دراما وقنوات عامة"}, {"id": "زي ألوان ZEE", "name": "زي ألوان ZEE", "logo": "https://nextdaywithme.shop/uploads/channels/8cd01a5bd325a40df66a0351b7c0cb3d.webp", "qualities": [{"id": 1133, "label": "720p", "qnum": 720}], "group": "دراما وقنوات عامة"}, {"id": "زي أفلام ZEE", "name": "زي أفلام ZEE", "logo": "https://nextdaywithme.shop/uploads/channels/80d0c30b8dbb28b179232517589fe344.webp", "qualities": [{"id": 1136, "label": "570p", "qnum": 570}], "group": "دراما وقنوات عامة"}, {"id": "beIN Sports 1", "name": "beIN Sports 1", "logo": "https://nextdaywithme.shop/uploads/channels/a097c34e337a8c9294d62cdfc17bb577.webp", "qualities": [{"id": 1676, "label": "4K UHD", "qnum": 4}, {"id": 1427, "label": "240p", "qnum": 240}, {"id": 1313, "label": "570p", "qnum": 570}, {"id": 1316, "label": "720p", "qnum": 720}, {"id": 1529, "label": "720p", "qnum": 720}, {"id": 1661, "label": "720p", "qnum": 720}, {"id": 1664, "label": "720p", "qnum": 720}, {"id": 1319, "label": "1080p", "qnum": 1080}, {"id": 1667, "label": "1080p", "qnum": 1080}, {"id": 1670, "label": "1080p", "qnum": 1080}], "group": "beIN Sports"}, {"id": "beIN Sports 2", "name": "beIN Sports 2", "logo": "https://nextdaywithme.shop/uploads/channels/06dc8a8bae7d49bc3033271575498a7e.webp", "qualities": [{"id": 1430, "label": "240p", "qnum": 240}, {"id": 1322, "label": "570p", "qnum": 570}, {"id": 1325, "label": "720p", "qnum": 720}, {"id": 1538, "label": "720p", "qnum": 720}, {"id": 1700, "label": "720p", "qnum": 720}, {"id": 1703, "label": "720p", "qnum": 720}, {"id": 1328, "label": "1080p", "qnum": 1080}, {"id": 1706, "label": "1080p", "qnum": 1080}, {"id": 1709, "label": "1080p", "qnum": 1080}, {"id": 1712, "label": "1080p", "qnum": 1080}, {"id": 1715, "label": "1080p", "qnum": 1080}], "group": "beIN Sports"}, {"id": "beIN Sports 3", "name": "beIN Sports 3", "logo": "https://nextdaywithme.shop/uploads/channels/305e84a2db716775c64388f60741decb.webp", "qualities": [{"id": 1433, "label": "240p", "qnum": 240}, {"id": 1331, "label": "570p", "qnum": 570}, {"id": 1334, "label": "720p", "qnum": 720}, {"id": 1541, "label": "720p", "qnum": 720}, {"id": 1727, "label": "720p", "qnum": 720}, {"id": 1730, "label": "720p", "qnum": 720}, {"id": 1337, "label": "1080p", "qnum": 1080}, {"id": 1733, "label": "1080p", "qnum": 1080}, {"id": 1736, "label": "1080p", "qnum": 1080}], "group": "beIN Sports"}, {"id": "beIN Sports 4", "name": "beIN Sports 4", "logo": "https://nextdaywithme.shop/uploads/channels/449d45498946dd728453b1a4041b67c7.webp", "qualities": [{"id": 1448, "label": "240p", "qnum": 240}, {"id": 1340, "label": "570p", "qnum": 570}, {"id": 1343, "label": "720p", "qnum": 720}, {"id": 1544, "label": "720p", "qnum": 720}, {"id": 1748, "label": "720p", "qnum": 720}, {"id": 1745, "label": "730p", "qnum": 730}, {"id": 1346, "label": "1080p", "qnum": 1080}, {"id": 1751, "label": "1080p", "qnum": 1080}, {"id": 1754, "label": "1080p", "qnum": 1080}, {"id": 1757, "label": "1080p", "qnum": 1080}, {"id": 1760, "label": "1080p", "qnum": 1080}], "group": "beIN Sports"}, {"id": "beIN Sports 5", "name": "beIN Sports 5", "logo": "https://nextdaywithme.shop/uploads/channels/7f1ec6d635bc895634c24c181120e80d.webp", "qualities": [{"id": 1451, "label": "240p", "qnum": 240}, {"id": 1349, "label": "570p", "qnum": 570}, {"id": 1547, "label": "720p", "qnum": 720}, {"id": 1550, "label": "720p", "qnum": 720}, {"id": 1571, "label": "720p", "qnum": 720}, {"id": 1355, "label": "1080p", "qnum": 1080}, {"id": 1763, "label": "1080p", "qnum": 1080}, {"id": 1766, "label": "1080p", "qnum": 1080}, {"id": 1769, "label": "1080p", "qnum": 1080}, {"id": 1772, "label": "1080p", "qnum": 1080}], "group": "beIN Sports"}, {"id": "beIN Sports 6", "name": "beIN Sports 6", "logo": "https://nextdaywithme.shop/uploads/channels/ff919dc1e73746e934dfd9f078d7e59d.webp", "qualities": [{"id": 1556, "label": "240p", "qnum": 240}, {"id": 1358, "label": "570p", "qnum": 570}, {"id": 1361, "label": "720p", "qnum": 720}, {"id": 1553, "label": "720p", "qnum": 720}, {"id": 1364, "label": "1080p", "qnum": 1080}], "group": "beIN Sports"}, {"id": "beIN Sports 7", "name": "beIN Sports 7", "logo": "https://nextdaywithme.shop/uploads/channels/fcec8d4f6e2e146452bb1f3b8e0aec67.webp", "qualities": [{"id": 1559, "label": "240p", "qnum": 240}, {"id": 1367, "label": "570p", "qnum": 570}, {"id": 1370, "label": "720p", "qnum": 720}, {"id": 1373, "label": "1080p", "qnum": 1080}], "group": "beIN Sports"}, {"id": "beIN Sports 8", "name": "beIN Sports 8", "logo": "https://nextdaywithme.shop/uploads/channels/5bc41cfd7a99da0bbec15f9c6c12a4b5.webp", "qualities": [{"id": 1562, "label": "240p", "qnum": 240}, {"id": 1376, "label": "570p", "qnum": 570}, {"id": 1379, "label": "720p", "qnum": 720}, {"id": 1382, "label": "1080p", "qnum": 1080}], "group": "beIN Sports"}, {"id": "beIN Sports 9", "name": "beIN Sports 9", "logo": "https://nextdaywithme.shop/uploads/channels/4d06ba05a00291f30f21ad8ad4ab4e1c.webp", "qualities": [{"id": 1565, "label": "240p", "qnum": 240}, {"id": 1385, "label": "570p", "qnum": 570}, {"id": 1388, "label": "720p", "qnum": 720}, {"id": 1391, "label": "1080p", "qnum": 1080}], "group": "beIN Sports"}, {"id": "MBC MAX", "name": "MBC MAX", "logo": "https://nextdaywithme.shop/uploads/channels/875cbb6efabce6e81578be2f0beda095.webp", "qualities": [{"id": 1424, "label": "1080p", "qnum": 1080}], "group": "باقة MBC"}, {"id": "العراقية الرياضية", "name": "العراقية الرياضية", "logo": "https://nextdaywithme.shop/uploads/channels/e149c67a28a472452be9973968a12736.webp", "qualities": [{"id": 1502, "label": "1080p", "qnum": 1080}], "group": "قنوات رياضية منوعة"}, {"id": "الجزائرية 1", "name": "الجزائرية 1", "logo": "https://nextdaywithme.shop/uploads/channels/a8d0a15fa39f035aee347851bc877b01.webp", "qualities": [{"id": 1505, "label": "1080p", "qnum": 1080}], "group": "الباقة الجزائرية"}, {"id": "الجزائرية 2", "name": "الجزائرية 2", "logo": "https://nextdaywithme.shop/uploads/channels/6685a773471e9dbc69604c2a64362c73.webp", "qualities": [{"id": 1508, "label": "1080p", "qnum": 1080}], "group": "الباقة الجزائرية"}, {"id": "الجزائرية الإخبارية", "name": "الجزائرية الإخبارية", "logo": "https://nextdaywithme.shop/uploads/channels/a255aee26ee72f64d23993d7cd49237d.webp", "qualities": [{"id": 1511, "label": "720p", "qnum": 720}], "group": "الباقة الجزائرية"}, {"id": "الجزائرية 5", "name": "الجزائرية 5", "logo": "https://nextdaywithme.shop/uploads/channels/66f90f5c45f44320218c8b95aaefd750.webp", "qualities": [{"id": 1514, "label": "570p", "qnum": 570}], "group": "الباقة الجزائرية"}, {"id": "الجزائرية للقرآن", "name": "الجزائرية للقرآن", "logo": "https://nextdaywithme.shop/uploads/channels/66f90f5c45f44320218c8b95aaefd750.webp", "qualities": [{"id": 1517, "label": "570p", "qnum": 570}], "group": "الباقة الجزائرية"}, {"id": "الجزائرية 6", "name": "الجزائرية 6", "logo": "https://nextdaywithme.shop/uploads/channels/85f328389f09e2395fe696dd2ad888ff.webp", "qualities": [{"id": 1520, "label": "1080p", "qnum": 1080}], "group": "الباقة الجزائرية"}, {"id": "ليبيا الرياضية 1", "name": "ليبيا الرياضية 1", "logo": "", "qualities": [{"id": 1523, "label": "1080p", "qnum": 1080}], "group": "قنوات رياضية منوعة"}, {"id": "ليبيا الرياضية 2", "name": "ليبيا الرياضية 2", "logo": "", "qualities": [{"id": 1526, "label": "720p", "qnum": 720}], "group": "قنوات رياضية منوعة"}, {"id": "ناشونال جيوغرافيك", "name": "ناشونال جيوغرافيك", "logo": "https://nextdaywithme.shop/uploads/channels/b1895c8bcad9fe764ec25f17c6636da8.webp", "qualities": [{"id": 1592, "label": "1080p", "qnum": 1080}], "group": "قنوات رياضية منوعة"}, {"id": "شاشا 1 الكويتية", "name": "شاشا 1 الكويتية", "logo": "https://nextdaywithme.shop/uploads/channels/483ed5d52134d47d4bf93290b6f83358.webp", "qualities": [{"id": 1610, "label": "1080p", "qnum": 1080}], "group": "قنوات رياضية منوعة"}, {"id": "دبي الرياضية 1", "name": "دبي الرياضية 1", "logo": "https://nextdaywithme.shop/uploads/channels/685b89eacc89ad1ca591bea6d69931a4.webp", "qualities": [{"id": 1616, "label": "1080p", "qnum": 1080}], "group": "قنوات رياضية منوعة"}, {"id": "دبي الرياضية 2", "name": "دبي الرياضية 2", "logo": "https://nextdaywithme.shop/uploads/channels/7be8af34784b44c1127f2f3b0c8536e5.webp", "qualities": [{"id": 1619, "label": "1080p", "qnum": 1080}], "group": "قنوات رياضية منوعة"}, {"id": "دبي الرياضية 3", "name": "دبي الرياضية 3", "logo": "https://nextdaywithme.shop/uploads/channels/61661b2d0aefe1aee7950b6c0c9052c7.webp", "qualities": [{"id": 1622, "label": "720p", "qnum": 720}], "group": "قنوات رياضية منوعة"}, {"id": "الكأس 5", "name": "الكأس 5", "logo": "https://nextdaywithme.shop/uploads/channels/5c61e2fe3f862b97bb5128d0c8bc704b.webp", "qualities": [{"id": 1625, "label": "1080p", "qnum": 1080}, {"id": 1628, "label": "1080p", "qnum": 1080}, {"id": 1631, "label": "1080p", "qnum": 1080}], "group": "قنوات الكأس"}, {"id": "الكأس 6", "name": "الكأس 6", "logo": "https://nextdaywithme.shop/uploads/channels/01df209515f014554fe248ab500ed3ba.webp", "qualities": [{"id": 1634, "label": "720p", "qnum": 720}, {"id": 1637, "label": "720p", "qnum": 720}, {"id": 1640, "label": "1080p", "qnum": 1080}], "group": "قنوات الكأس"}, {"id": "ألوان الرياضية 1", "name": "ألوان الرياضية 1", "logo": "https://nextdaywithme.shop/uploads/channels/e388a7d0afcdf9d98febecd08b9d1363.webp", "qualities": [{"id": 1643, "label": "720p", "qnum": 720}], "group": "ألوان الرياضية"}, {"id": "ألوان الرياضية 2", "name": "ألوان الرياضية 2", "logo": "https://nextdaywithme.shop/uploads/channels/e099b7c1206aa609dcdce6d3d0217bf7.webp", "qualities": [{"id": 1646, "label": "1080p", "qnum": 1080}], "group": "ألوان الرياضية"}, {"id": "ألوان الرياضية 3", "name": "ألوان الرياضية 3", "logo": "https://nextdaywithme.shop/uploads/channels/2c832f985657ef930b27fb87d1276f74.webp", "qualities": [{"id": 1649, "label": "1080p", "qnum": 1080}], "group": "ألوان الرياضية"}, {"id": "ألوان الرياضية 4", "name": "ألوان الرياضية 4", "logo": "https://nextdaywithme.shop/uploads/channels/d342050c57466a09c154526ccfcd5367.webp", "qualities": [{"id": 1652, "label": "1080p", "qnum": 1080}], "group": "ألوان الرياضية"}, {"id": "ألوان الرياضية 5", "name": "ألوان الرياضية 5", "logo": "https://nextdaywithme.shop/uploads/channels/02eb7a7de80acf1eabafd948737a6b7c.webp", "qualities": [{"id": 1655, "label": "1080p", "qnum": 1080}], "group": "ألوان الرياضية"}, {"id": "beIN Sports 2 English", "name": "beIN Sports 2 English", "logo": "https://nextdaywithme.shop/uploads/channels/06dc8a8bae7d49bc3033271575498a7e.webp", "qualities": [{"id": 1682, "label": "1080p", "qnum": 1080}], "group": "beIN Sports"}, {"id": "beIN Sports 1 English", "name": "beIN Sports 1 English", "logo": "https://nextdaywithme.shop/uploads/channels/a097c34e337a8c9294d62cdfc17bb577.webp", "qualities": [{"id": 1685, "label": "1080p", "qnum": 1080}, {"id": 1688, "label": "1080p", "qnum": 1080}], "group": "beIN Sports"}, {"id": "TOD Sport 9", "name": "TOD Sport 9", "logo": "https://nextdaywithme.shop/uploads/channels/4d06ba05a00291f30f21ad8ad4ab4e1c.webp", "qualities": [{"id": 1691, "label": "1080p", "qnum": 1080}, {"id": 1694, "label": "1080p", "qnum": 1080}], "group": "beIN Sports"}, {"id": "TOD Sport 1", "name": "TOD Sport 1", "logo": "https://nextdaywithme.shop/uploads/channels/a097c34e337a8c9294d62cdfc17bb577.webp", "qualities": [{"id": 1697, "label": "1080p", "qnum": 1080}], "group": "beIN Sports"}, {"id": "الأهلي المصري", "name": "الأهلي المصري", "logo": "", "qualities": [{"id": 1718, "label": "1080p", "qnum": 1080}], "group": "قنوات رياضية منوعة"}, {"id": "النيل الأزرق", "name": "النيل الأزرق", "logo": "", "qualities": [{"id": 1721, "label": "720p", "qnum": 720}], "group": "دراما وقنوات عامة"}, {"id": "beIN Sports 3 English", "name": "beIN Sports 3 English", "logo": "https://nextdaywithme.shop/uploads/channels/305e84a2db716775c64388f60741decb.webp", "qualities": [{"id": 1742, "label": "1080p", "qnum": 1080}], "group": "beIN Sports"}, {"id": "الرابعة الرياضية", "name": "الرابعة الرياضية", "logo": "https://nextdaywithme.shop/uploads/channels/e149c67a28a472452be9973968a12736.webp", "qualities": [{"id": 1778, "label": "1920p", "qnum": 1920}], "group": "قنوات رياضية منوعة"}];
+    const GROUPS_DB = [{"name": "beIN Sports", "channels": ["beIN Sports 1", "beIN Sports 2", "beIN Sports 3", "beIN Sports 4", "beIN Sports 5", "beIN Sports 6", "beIN Sports 7", "beIN Sports 8", "beIN Sports 9", "beIN Sports 2 English", "beIN Sports 1 English", "TOD Sport 9", "TOD Sport 1", "beIN Sports 3 English"]}, {"name": "باقة MBC", "channels": ["MBC 1", "MBC 2", "MBC 3", "MBC Action", "MBC مصر 1", "MBC مصر 2", "MBC MAX"]}, {"name": "قنوات الكأس", "channels": ["الكأس 1", "الكأس 2", "الكأس 3", "الكأس 4", "الكأس 5", "الكأس 6"]}, {"name": "أون سبورت ON", "channels": ["ON Sport 1", "ON Sport MAX", "ON Sport PLUS"]}, {"name": "باقة ثمانية 8", "channels": ["ثمانية 1", "ثمانية 2", "ثمانية 3"]}, {"name": "ستارزبلاي StarzPlay", "channels": ["StarzPlay Sports 1", "StarzPlay Sports 2", "StarzPlay Sports 3"]}, {"name": "ألوان الرياضية", "channels": ["ألوان الرياضية 1", "ألوان الرياضية 2", "ألوان الرياضية 3", "ألوان الرياضية 4", "ألوان الرياضية 5"]}, {"name": "قنوات رياضية منوعة", "channels": ["شاهد سبورت", "أبوظبي الرياضية 1", "أبوظبي الرياضية 2", "المغربية الرياضية", "العراقية الرياضية", "ليبيا الرياضية 1", "ليبيا الرياضية 2", "ناشونال جيوغرافيك", "شاشا 1 الكويتية", "دبي الرياضية 1", "دبي الرياضية 2", "دبي الرياضية 3", "الأهلي المصري", "الرابعة الرياضية"]}, {"name": "دراما وقنوات عامة", "channels": ["الرابعة العامة", "DMC", "DMC دراما", "ON دراما", "صدى البلد", "صدى البلد 2", "صدى البلد دراما", "سوريا 2", "زي ألوان ZEE", "زي أفلام ZEE", "النيل الأزرق"]}, {"name": "قنوات الأطفال", "channels": ["جيم JEEM TV", "روتانا كيدز", "براعم للأطفال", "طيور الجنة", "كراميش للأطفال"]}, {"name": "الباقة الجزائرية", "channels": ["الجزائرية 1", "الجزائرية 2", "الجزائرية الإخبارية", "الجزائرية 5", "الجزائرية للقرآن", "الجزائرية 6"]}, {"name": "أفلام وراديو", "channels": ["إذاعة راديو", "روتانا سينما", "راديو أطفال"]}];
+
+    // State
+    let activeChannel = null;
+    let activeQuality = null;
+    let activeGroupIndex = 0;
+    let hls = null;
+    let controlsTimer = null;
+    let isControlsVisible = true;
+
+    // 4 Aspect Ratio Modes
+    // 0: contain, 1: fill, 2: cover (تجاوز حدود الكاميرا), 3: 16-9
+    let aspectIndex = 0;
+    const aspectModes = [
+      { id: 'contain', label: 'احتواء', class: 'mode-contain', desc: 'النسبة الأصلية (احتواء)' },
+      { id: 'fill', label: 'تعبئة', class: 'mode-fill', desc: 'ملء الشاشة بالكامل (تعبئة)' },
+      { id: 'cover', label: 'تجاوز الكاميرا', class: 'mode-cover', desc: 'تغطية وتجاوز حدود الكاميرا والنوتش (Cover)' },
+      { id: '16-9', label: '16:9', class: 'mode-16-9', desc: 'شاشة عريضة 16:9' }
+    ];
+
+    // DOM Elements
+    const video = document.getElementById('videoPlayer');
+    const centerBrand = document.getElementById('centerBrand');
+    const centerSubtext = document.getElementById('centerSubtext');
+    const spinner = document.getElementById('spinner');
+    const toast = document.getElementById('toast');
+    const toastMsg = document.getElementById('toastMsg');
+    const controlsOverlay = document.getElementById('controlsOverlay');
+    const btnPlay = document.getElementById('btnPlay');
+    const iconPlay = document.getElementById('iconPlay');
+    const iconPause = document.getElementById('iconPause');
+    const btnMute = document.getElementById('btnMute');
+    const iconVolume = document.getElementById('iconVolume');
+    const iconMuted = document.getElementById('iconMuted');
+    const btnAspect = document.getElementById('btnAspect');
+    const aspectModeText = document.getElementById('aspectModeText');
+    const btnQuality = document.getElementById('btnQuality');
+    const activeQualityLabel = document.getElementById('activeQualityLabel');
+    const qualityMenu = document.getElementById('qualityMenu');
+    const qualityList = document.getElementById('qualityList');
+    const activeLogoImg = document.getElementById('activeLogoImg');
+    const activeLogoFallback = document.getElementById('activeLogoFallback');
+    const channelTitle = document.getElementById('channelTitle');
+    const groupBadge = document.getElementById('groupBadge');
+    const liveBadge = document.getElementById('liveBadge');
+    const qualityCurrentBadge = document.getElementById('qualityCurrentBadge');
+    const groupsDrawer = document.getElementById('groupsDrawer');
+    const groupsList = document.getElementById('groupsList');
+    const channelsList = document.getElementById('channelsList');
+    const selectedGroupTitle = document.getElementById('selectedGroupTitle');
+    const selectedGroupCount = document.getElementById('selectedGroupCount');
+
+    // Show Toast
+    function showToast(msg, icon = '📺') {
+      document.getElementById('toastIcon').textContent = icon;
+      toastMsg.textContent = msg;
+      toast.classList.remove('opacity-0');
+      clearTimeout(toast._timer);
+      toast._timer = setTimeout(() => {
+        toast.classList.add('opacity-0');
+      }, 2500);
+    }
+
+    // Aspect Ratio Cycling (4 القياسات مع تجاوز حدود الكاميرا)
+    function cycleAspectMode() {
+      aspectIndex = (aspectIndex + 1) % aspectModes.length;
+      applyAspectMode();
+    }
+
+    function applyAspectMode() {
+      const mode = aspectModes[aspectIndex];
+      video.className = `${mode.class} transition-all duration-200`;
+      aspectModeText.textContent = mode.label;
+      showToast(mode.desc, '📐');
+    }
+
+    // Playback Controls
+    function togglePlay() {
+      if (video.paused) {
+        video.play();
+        iconPlay.classList.add('hidden');
+        iconPause.classList.remove('hidden');
+      } else {
+        video.pause();
+        iconPlay.classList.remove('hidden');
+        iconPause.classList.add('hidden');
+      }
+    }
+
+    function toggleMute() {
+      video.muted = !video.muted;
+      if (video.muted) {
+        iconVolume.classList.add('hidden');
+        iconMuted.classList.remove('hidden');
+        showToast('تم كتم الصوت', '🔇');
+      } else {
+        iconVolume.classList.remove('hidden');
+        iconMuted.classList.add('hidden');
+        showToast('تم تفعيل الصوت', '🔊');
+      }
+    }
+
+    function toggleFullscreen() {
+      const container = document.getElementById('playerContainer');
+      if (!document.fullscreenElement) {
+        container.requestFullscreen().catch(() => {
+          video.webkitEnterFullscreen && video.webkitEnterFullscreen();
+        });
+      } else {
+        document.exitFullscreen().catch(() => {});
+      }
+    }
+
+    // Stream URL Builder
+    function buildStreamUrl(streamId) {
+      const raw = `${STREAM_BASE}${streamId}.css`;
+      return `${WORKER_URL}?url=${encodeURIComponent(raw)}`;
+    }
+
+    // Play Channel: Automatically on Lowest Quality
+    function selectChannel(ch) {
+      activeChannel = ch;
+      channelTitle.textContent = ch.name;
+      groupBadge.textContent = ch.group || 'قنوات';
+      liveBadge.classList.remove('hidden');
+      centerBrand.style.opacity = '0';
+
+      // Update Channel Logo
+      if (ch.logo) {
+        activeLogoImg.src = ch.logo;
+        activeLogoImg.classList.remove('hidden');
+        activeLogoFallback.classList.add('hidden');
+      } else {
+        activeLogoImg.classList.add('hidden');
+        activeLogoFallback.classList.remove('hidden');
+      }
+
+      // Automatically choose lowest quality (الأولى في المصفوفة المرتبة تصاعدياً)
+      const lowestQ = ch.qualities[0];
+      setStreamQuality(lowestQ, true);
+
+      // Re-render drawers to highlight active
+      renderChannels(activeGroupIndex);
+      
+      // Auto close drawer on mobile for seamless viewing
+      if (window.innerWidth < 640) {
+        toggleGroupsDrawer(false);
+      }
+    }
+
+    // Set Quality (Manual or Automatic Switch)
+    function setStreamQuality(qualityObj, isAutoInitial = false) {
+      activeQuality = qualityObj;
+      activeQualityLabel.textContent = qualityObj.label;
+      qualityCurrentBadge.textContent = qualityObj.label;
+      
+      spinner.classList.remove('hidden');
+      const streamUrl = buildStreamUrl(qualityObj.id);
+
+      if (hls) {
+        hls.destroy();
+        hls = null;
+      }
+
+      if (Hls.isSupported()) {
+        hls = new Hls({
+          enableWorker: true,
+          lowLatencyMode: true,
+          backBufferLength: 30
+        });
+        hls.loadSource(streamUrl);
+        hls.attachMedia(video);
+
+        hls.on(Hls.Events.MANIFEST_PARSED, () => {
+          spinner.classList.add('hidden');
+          video.play().catch(() => {});
+          iconPlay.classList.add('hidden');
+          iconPause.classList.remove('hidden');
+          if (!isAutoInitial) {
+            showToast(`تم التبديل إلى جودة: ${qualityObj.label}`, '⚡');
+          }
+        });
+
+        hls.on(Hls.Events.ERROR, (e, data) => {
+          if (data.fatal) {
+            spinner.classList.add('hidden');
+            showToast(`تنبيه: تعذر تحميل سيرفر ${qualityObj.label}`, '⚠️');
+          }
+        });
+      } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
+        video.src = streamUrl;
+        video.addEventListener('loadedmetadata', () => {
+          spinner.classList.add('hidden');
+          video.play().catch(() => {});
+        });
+      }
+
+      // Update Quality Menu UI
+      updateQualityMenuUI();
+      qualityMenu.classList.add('hidden');
+    }
+
+    // Toggle Quality Dropdown
+    function toggleQualityMenu(e) {
+      e.stopPropagation();
+      if (!activeChannel) {
+        showToast('يرجى اختيار قناة أولاً', 'ℹ️');
+        return;
+      }
+      qualityMenu.classList.toggle('hidden');
+    }
+
+    function updateQualityMenuUI() {
+      if (!activeChannel) return;
+      qualityList.innerHTML = '';
+      activeChannel.qualities.forEach(q => {
+        const btn = document.createElement('button');
+        const isActive = activeQuality && activeQuality.id === q.id;
+        btn.className = `w-full px-3 py-1.5 text-xs rounded-xl flex items-center justify-between transition ${
+          isActive 
+            ? 'bg-amber-400 text-black font-bold shadow' 
+            : 'text-neutral-300 hover:bg-neutral-800'
+        }`;
+        btn.innerHTML = `
+          <span class="font-mono">${q.label}</span>
+          <span class="text-[10px] ${isActive ? 'text-black/80' : 'text-neutral-400'}">سيرفر #${q.id}</span>
+        `;
+        btn.onclick = (e) => {
+          e.stopPropagation();
+          setStreamQuality(q);
+        };
+        qualityList.appendChild(btn);
+      });
+    }
+
+    // Groups & Channels Dual Drawer
+    function toggleGroupsDrawer(forceState) {
+      const isOpen = forceState !== undefined ? forceState : groupsDrawer.classList.contains('translate-x-full');
+      if (isOpen) {
+        groupsDrawer.classList.remove('translate-x-full');
+      } else {
+        groupsDrawer.classList.add('translate-x-full');
+      }
+    }
+
+    function renderGroups() {
+      groupsList.innerHTML = '';
+      GROUPS_DB.forEach((grp, idx) => {
+        const btn = document.createElement('button');
+        const isActive = idx === activeGroupIndex;
+        btn.className = `w-full text-right px-3 py-2.5 rounded-xl text-xs sm:text-sm font-semibold flex items-center justify-between transition ${
+          isActive 
+            ? 'bg-red-600 text-white shadow-lg' 
+            : 'text-neutral-300 hover:bg-neutral-900 bg-neutral-950/40'
+        }`;
+        btn.innerHTML = `
+          <span class="truncate">${grp.name}</span>
+          <span class="text-[10px] px-1.5 py-0.5 rounded-full font-mono ${
+            isActive ? 'bg-black/30 text-white' : 'bg-neutral-800 text-neutral-400'
+          }">${grp.channels.length}</span>
+        `;
+        btn.onclick = () => {
+          activeGroupIndex = idx;
+          renderGroups();
+          renderChannels(idx);
+        };
+        groupsList.appendChild(btn);
+      });
+    }
+
+    function renderChannels(grpIndex) {
+      const grp = GROUPS_DB[grpIndex];
+      selectedGroupTitle.textContent = grp.name;
+      selectedGroupCount.textContent = `${grp.channels.length} قناة`;
+      channelsList.innerHTML = '';
+
+      grp.channels.forEach(chId => {
+        const ch = CHANNELS_DB.find(c => c.id === chId);
+        if (!ch) return;
+
+        const isActive = activeChannel && activeChannel.id === ch.id;
+        const lowestQ = ch.qualities[0];
+        const highestQ = ch.qualities[ch.qualities.length - 1];
+
+        const card = document.createElement('div');
+        card.className = `p-2 rounded-xl border flex items-center justify-between cursor-pointer transition active:scale-[0.98] ${
+          isActive 
+            ? 'border-red-500 bg-red-950/40 shadow' 
+            : 'border-neutral-900 bg-neutral-950 hover:bg-neutral-900/80 hover:border-neutral-800'
+        }`;
+
+        card.innerHTML = `
+          <div class="flex items-center gap-2.5 overflow-hidden">
+            <div class="w-8 h-8 rounded-lg bg-black border border-neutral-800 p-0.5 flex items-center justify-center shrink-0 overflow-hidden">
+              ${ch.logo ? `<img src="${ch.logo}" class="w-full h-full object-contain" onerror="this.parentElement.innerHTML='📺'">` : '<span class="text-xs">📺</span>'}
+            </div>
+            <div class="flex flex-col overflow-hidden">
+              <span class="text-xs font-bold text-white truncate max-w-[120px] sm:max-w-[160px]">${ch.name}</span>
+              <span class="text-[10px] text-neutral-400 font-mono">${lowestQ.label} ${ch.qualities.length > 1 ? '← ' + highestQ.label : ''}</span>
+            </div>
+          </div>
+          <div class="shrink-0">
+            <span class="text-[9px] px-1.5 py-0.5 rounded font-mono ${
+              isActive ? 'bg-red-600 text-white font-bold' : 'bg-neutral-800 text-neutral-300'
+            }">${ch.qualities.length} جودات</span>
+          </div>
+        `;
+
+        card.onclick = () => selectChannel(ch);
+        channelsList.appendChild(card);
+      });
+    }
+
+    // Auto Hiding Controls Overlay
+    function resetControlsTimer() {
+      controlsOverlay.style.opacity = '1';
+      controlsOverlay.style.pointerEvents = 'auto';
+      isControlsVisible = true;
+      clearTimeout(controlsTimer);
+      controlsTimer = setTimeout(() => {
+        if (!video.paused && !groupsDrawer.classList.contains('translate-x-full') === false) {
+          controlsOverlay.style.opacity = '0';
+          controlsOverlay.style.pointerEvents = 'none';
+          isControlsVisible = false;
+          qualityMenu.classList.add('hidden');
+        }
+      }, 3500);
+    }
+
+    function handleCenterTap() {
+      if (isControlsVisible) {
+        controlsOverlay.style.opacity = '0';
+        controlsOverlay.style.pointerEvents = 'none';
+        isControlsVisible = false;
+        qualityMenu.classList.add('hidden');
+      } else {
+        resetControlsTimer();
+      }
+    }
+
+    // Close quality menu on outside click
+    document.addEventListener('click', (e) => {
+      if (!btnQuality.contains(e.target) && !qualityMenu.contains(e.target)) {
+        qualityMenu.classList.add('hidden');
+      }
+    });
+
+    // Reset controls timer on touch/mouse
+    ['mousemove', 'touchstart', 'click'].forEach(evt => {
+      document.getElementById('playerContainer').addEventListener(evt, resetControlsTimer, { passive: true });
+    });
+
+    // Init App
+    window.addEventListener('DOMContentLoaded', () => {
+      applyAspectMode();
+      renderGroups();
+      renderChannels(0);
+
+      // Start with beIN Sports 1 if available
+      const defaultChannel = CHANNELS_DB.find(c => c.name === 'beIN Sports 1') || CHANNELS_DB[0];
+      if (defaultChannel) {
+        selectChannel(defaultChannel);
+      }
+      resetControlsTimer();
+    });
+  </script>
+</body>
+</html>
