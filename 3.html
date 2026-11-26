@@ -112,12 +112,63 @@
       height: 100% !important;
     }
 
+    /* Layer Stacking Order (Z-Index Architecture) */
+    #videoPlayer {
+      position: relative;
+      z-index: 1;
+    }
+    #gestureZone {
+      position: absolute;
+      inset: 0;
+      z-index: 10;
+      touch-action: none;
+      -webkit-touch-callout: none;
+    }
+    #centerBrand {
+      z-index: 15;
+    }
+    #hudBrightness, #hudVolume {
+      z-index: 25;
+    }
+    #toast {
+      z-index: 28;
+    }
+    #controlsOverlay {
+      position: absolute;
+      inset: 0;
+      z-index: 40 !important;
+      pointer-events: none !important;
+    }
+    #controlsOverlay button,
+    #controlsOverlay a,
+    #qualityMenu {
+      pointer-events: auto !important;
+      position: relative;
+      z-index: 45 !important;
+    }
+
     /* Drawer Width: Quarter Screen Only (ربع الشاشة فقط دائماً) */
     #groupsDrawer {
+      position: fixed;
+      top: 0;
+      bottom: 0;
+      right: 0;
       width: 25% !important;
       max-width: 25% !important;
       min-width: 160px;
+      z-index: 100 !important;
+      pointer-events: auto !important;
+      background-color: rgba(0, 0, 0, 0.96);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border-left: 1px solid rgba(255, 255, 255, 0.1);
+      transform: translateX(100%) !important;
+      transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1);
     }
+    #groupsDrawer.drawer-open {
+      transform: translateX(0) !important;
+    }
+
     @media (orientation: landscape) {
       #groupsDrawer {
         width: 25vw !important;
@@ -129,15 +180,6 @@
       width: 25vh !important;
       max-width: 25vh !important;
       min-width: 200px;
-    }
-
-    /* Gesture Layer: always on top of video, below controls */
-    #gestureZone {
-      position: absolute;
-      inset: 0;
-      z-index: 20;
-      touch-action: none;
-      -webkit-touch-callout: none;
     }
   </style>
 </head>
@@ -158,7 +200,7 @@
     ></video>
 
     <!-- Center Brand: AlameeereLive (يختفي فقط عند بدء تشغيل الفيديو فعلياً) -->
-    <div id="centerBrand" class="absolute inset-0 pointer-events-none flex flex-col items-center justify-center transition-opacity duration-500 z-30">
+    <div id="centerBrand" class="absolute inset-0 pointer-events-none flex flex-col items-center justify-center transition-opacity duration-500">
       <div class="flex items-center gap-2.5 px-6 py-3 rounded-2xl bg-black/80 backdrop-blur-md border border-neutral-800 shadow-2xl brand-glow">
         <div class="w-3 h-3 rounded-full bg-red-600 animate-pulse"></div>
         <h1 class="text-2xl sm:text-3xl font-black tracking-wider uppercase">
@@ -168,12 +210,12 @@
     </div>
 
     <!-- Loading / Fast Buffering Indicator -->
-    <div id="spinner" class="hidden absolute inset-0 pointer-events-none flex items-center justify-center z-25 bg-black/30">
+    <div id="spinner" class="hidden absolute inset-0 pointer-events-none flex items-center justify-center bg-black/30 z-20">
       <div class="w-9 h-9 border-2 border-neutral-700 border-t-red-600 rounded-full animate-spin"></div>
     </div>
 
     <!-- HUD Overlay for Gestures: Brightness (Left) & Volume (Right) -->
-    <div id="hudBrightness" class="absolute left-6 top-1/2 -translate-y-1/2 bg-black/85 backdrop-blur-md border border-neutral-800 text-white px-3 py-4 rounded-2xl flex flex-col items-center gap-2 opacity-0 pointer-events-none transition-opacity duration-200 z-40 shadow-2xl">
+    <div id="hudBrightness" class="absolute left-6 top-1/2 -translate-y-1/2 bg-black/85 backdrop-blur-md border border-neutral-800 text-white px-3 py-4 rounded-2xl flex flex-col items-center gap-2 opacity-0 pointer-events-none transition-opacity duration-200 shadow-2xl">
       <span class="text-amber-400 text-base">☀️</span>
       <div class="w-1.5 h-24 bg-neutral-800 rounded-full overflow-hidden flex flex-col justify-end">
         <div id="hudBrightnessBar" class="w-full bg-amber-400 rounded-full transition-all duration-75" style="height: 100%;"></div>
@@ -181,7 +223,7 @@
       <span id="hudBrightnessVal" class="text-[10px] font-mono text-neutral-300">100%</span>
     </div>
 
-    <div id="hudVolume" class="absolute right-6 top-1/2 -translate-y-1/2 bg-black/85 backdrop-blur-md border border-neutral-800 text-white px-3 py-4 rounded-2xl flex flex-col items-center gap-2 opacity-0 pointer-events-none transition-opacity duration-200 z-40 shadow-2xl">
+    <div id="hudVolume" class="absolute right-6 top-1/2 -translate-y-1/2 bg-black/85 backdrop-blur-md border border-neutral-800 text-white px-3 py-4 rounded-2xl flex flex-col items-center gap-2 opacity-0 pointer-events-none transition-opacity duration-200 shadow-2xl">
       <span id="hudVolumeIcon" class="text-sky-400 text-base">🔊</span>
       <div class="w-1.5 h-24 bg-neutral-800 rounded-full overflow-hidden flex flex-col justify-end">
         <div id="hudVolumeBar" class="w-full bg-sky-400 rounded-full transition-all duration-75" style="height: 100%;"></div>
@@ -190,23 +232,21 @@
     </div>
 
     <!-- Toast Notification -->
-    <div id="toast" class="absolute top-14 right-1/2 translate-x-1/2 pointer-events-none opacity-0 transition-opacity duration-300 z-40 bg-neutral-900/95 border border-neutral-800 text-white text-xs px-3 py-1.5 rounded-full shadow-2xl flex items-center gap-2">
+    <div id="toast" class="absolute top-14 right-1/2 translate-x-1/2 pointer-events-none opacity-0 transition-opacity duration-300 bg-neutral-900/95 border border-neutral-800 text-white text-xs px-3 py-1.5 rounded-full shadow-2xl flex items-center gap-2">
       <span id="toastMsg">--</span>
     </div>
 
     <!-- ================= FULLSCREEN TOUCH & GESTURE LAYER ================= -->
-    <!-- يستجيب فوراً من أول لمسة وبشكل مستقل تام: نقرتين للدوران، سحب يمين للصوت، سحب يسار للإضاءة، نقرة للأزرار -->
     <div id="gestureZone"></div>
 
     <!-- ================= CONTROLS OVERLAY ================= -->
-    <!-- الحاوية الخارجية pointer-events-none لكي يمر اللمس فوراً إلى gestureZone، والأزرار فقط pointer-events-auto -->
-    <div id="controlsOverlay" class="absolute inset-0 flex flex-col justify-between transition-opacity duration-300 z-35 pointer-events-none bg-gradient-to-t from-black/80 via-transparent to-black/80 p-3 sm:p-4" style="padding-top: max(12px, var(--sat)); padding-bottom: max(12px, var(--sab)); padding-left: max(12px, var(--sal)); padding-right: max(12px, var(--sar));">
+    <div id="controlsOverlay" class="transition-opacity duration-300 flex flex-col justify-between p-3 sm:p-4" style="padding-top: max(12px, var(--sat)); padding-bottom: max(12px, var(--sab)); padding-left: max(12px, var(--sal)); padding-right: max(12px, var(--sar));">
       
       <!-- Top Bar: في الركن الأيمن اسم القناة وشعارها | في الركن الأيسر الأيقونات الثلاثة كرموز فقط -->
-      <div class="flex items-center justify-between w-full">
+      <div class="flex items-center justify-between w-full pointer-events-none">
         
-        <!-- الركن الأيمن: شعار واسم القناة فقط (يظهر فقط عند بدء تشغيل الفيديو - بدون أي كتابة إضافية) -->
-        <div id="channelHeader" class="flex items-center gap-2 overflow-hidden max-w-[60%] opacity-0 transition-opacity duration-200">
+        <!-- الركن الأيمن: شعار واسم القناة فقط (يظهر فقط عند بدء تشغيل القناة) -->
+        <div id="channelHeader" class="flex items-center gap-2 overflow-hidden max-w-[60%] opacity-0 transition-opacity duration-200 pointer-events-auto">
           <div id="activeLogoContainer" class="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-neutral-950 border border-neutral-800 p-0.5 flex items-center justify-center shrink-0 overflow-hidden shadow">
             <span id="activeLogoFallback" class="text-xs">📺</span>
             <img id="activeLogoImg" src="" class="w-full h-full object-contain hidden" alt="logo" onerror="this.classList.add('hidden'); document.getElementById('activeLogoFallback').classList.remove('hidden');">
@@ -215,17 +255,16 @@
         </div>
 
         <!-- الركن الأيسر: الأيقونات الثلاثة كرموز فقط (بدون أي نصوص عربية) -->
-        <!-- المجموعات دائماً موجود | الجودة واحتواء يظهران فقط عند تشغيل الفيديو -->
         <div class="flex items-center gap-1.5 sm:gap-2 pointer-events-auto">
           
-          <!-- 1. رمز المجموعات (دائماً متاح - رمز فقط نفس الرمز الأصلي) -->
+          <!-- 1. رمز المجموعات (دائماً متاح - رمز فقط) -->
           <button 
             id="btnToggleGroups" 
             onclick="toggleGroupsDrawer(event)" 
-            class="w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-neutral-900/90 hover:bg-neutral-800 border border-neutral-700/80 text-white flex items-center justify-center transition active:scale-95 shadow"
-            title="المجموعات"
+            class="w-9 h-9 rounded-xl bg-neutral-900/95 hover:bg-neutral-800 border border-neutral-700/80 text-white flex items-center justify-center transition active:scale-95 shadow cursor-pointer"
+            title="المجموعات والقنوات"
           >
-            <svg class="w-4 h-4 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg class="w-5 h-5 text-red-500 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h7"></path>
             </svg>
           </button>
@@ -235,10 +274,10 @@
             <button 
               id="btnQuality" 
               onclick="toggleQualityMenu(event)" 
-              class="w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-neutral-900/90 hover:bg-neutral-800 border border-neutral-700/80 text-white flex items-center justify-center transition active:scale-95 shadow"
+              class="w-9 h-9 rounded-xl bg-neutral-900/95 hover:bg-neutral-800 border border-neutral-700/80 text-white flex items-center justify-center transition active:scale-95 shadow cursor-pointer"
               title="الجودة"
             >
-              <svg class="w-4 h-4 text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg class="w-5 h-5 text-amber-400 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4"></path>
               </svg>
             </button>
@@ -246,7 +285,7 @@
             <!-- القائمة المنبثقة للجودات -->
             <div 
               id="qualityMenu" 
-              class="hidden absolute top-10 left-0 w-36 bg-neutral-950/95 backdrop-blur-xl border border-neutral-700/90 rounded-2xl shadow-2xl p-2 z-50 text-right pointer-events-auto"
+              class="hidden absolute top-11 left-0 w-36 bg-neutral-950/95 backdrop-blur-xl border border-neutral-700/90 rounded-2xl shadow-2xl p-2 z-50 text-right pointer-events-auto"
             >
               <div id="qualityList" class="flex flex-col gap-1 max-h-52 overflow-y-auto">
                 <!-- Injected via JS -->
@@ -258,10 +297,10 @@
           <button 
             id="btnAspect" 
             onclick="cycleAspectMode(event)" 
-            class="hidden w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-neutral-900/90 hover:bg-neutral-800 border border-neutral-700/80 text-white flex items-center justify-center transition active:scale-95 shadow"
+            class="hidden w-9 h-9 rounded-xl bg-neutral-900/95 hover:bg-neutral-800 border border-neutral-700/80 text-white flex items-center justify-center transition active:scale-95 shadow cursor-pointer"
             title="قياسات الفيديو"
           >
-            <svg class="w-4 h-4 text-sky-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg class="w-5 h-5 text-sky-400 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4"></path>
             </svg>
           </button>
@@ -274,34 +313,34 @@
       <div class="flex-1 pointer-events-none"></div>
 
       <!-- Bottom Bar: مشغل بسيط (بدون أي أيقونة دوران - الدوران بنقرتين فقط) -->
-      <div class="flex items-center justify-between w-full pt-1 pointer-events-auto">
-        <div class="flex items-center gap-2">
+      <div class="flex items-center justify-between w-full pt-1 pointer-events-none">
+        <div class="flex items-center gap-2 pointer-events-auto">
           <!-- Play / Pause -->
-          <button id="btnPlay" onclick="togglePlay(event)" class="w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-white text-black flex items-center justify-center hover:bg-neutral-200 transition active:scale-95 shadow">
-            <svg id="iconPlay" class="w-4 h-4 hidden" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
-            <svg id="iconPause" class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>
+          <button id="btnPlay" onclick="togglePlay(event)" class="w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-white text-black flex items-center justify-center hover:bg-neutral-200 transition active:scale-95 shadow cursor-pointer">
+            <svg id="iconPlay" class="w-4 h-4 hidden pointer-events-none" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+            <svg id="iconPause" class="w-4 h-4 pointer-events-none" fill="currentColor" viewBox="0 0 24 24"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>
           </button>
 
           <!-- Mute / Unmute -->
-          <button id="btnMute" onclick="toggleMute(event)" class="w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-neutral-900/90 text-white border border-neutral-700/80 flex items-center justify-center hover:bg-neutral-800 transition active:scale-95 shadow">
-            <svg id="iconVolume" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <button id="btnMute" onclick="toggleMute(event)" class="w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-neutral-900/90 text-white border border-neutral-700/80 flex items-center justify-center hover:bg-neutral-800 transition active:scale-95 shadow cursor-pointer">
+            <svg id="iconVolume" class="w-4 h-4 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z"></path>
             </svg>
-            <svg id="iconMuted" class="w-4 h-4 hidden text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg id="iconMuted" class="w-4 h-4 hidden text-red-400 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z"></path>
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2"></path>
             </svg>
           </button>
         </div>
 
-        <div class="flex items-center gap-2">
+        <div class="flex items-center gap-2 pointer-events-auto">
           <!-- Fullscreen button -->
           <button 
             onclick="toggleFullscreen(event)" 
-            class="w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-neutral-900/90 text-white border border-neutral-700/80 flex items-center justify-center hover:bg-neutral-800 transition active:scale-95 shadow"
+            class="w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-neutral-900/90 text-white border border-neutral-700/80 flex items-center justify-center hover:bg-neutral-800 transition active:scale-95 shadow cursor-pointer"
             title="ملء الشاشة"
           >
-            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg class="w-4 h-4 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4"></path>
             </svg>
           </button>
@@ -315,7 +354,7 @@
     <!-- ربع الشاشة فقط دائماً (25%) بحيث يظل الفيديو يعمل بوضوح في باقي الـ 75% من الشاشة -->
     <div 
       id="groupsDrawer" 
-      class="fixed inset-y-0 right-0 bg-black/95 backdrop-blur-2xl border-l border-neutral-800/90 transform translate-x-full transition-transform duration-300 z-50 flex flex-col shadow-2xl"
+      class="flex flex-col shadow-2xl"
       style="padding-top: max(8px, var(--sat)); padding-bottom: max(8px, var(--sab));"
     >
       
@@ -323,19 +362,19 @@
       <div class="px-2 py-2 border-b border-neutral-800/90 flex items-center justify-between shrink-0 bg-neutral-950/80">
         <button 
           onclick="toggleGroupsDrawer(event, false)" 
-          class="w-6 h-6 rounded-lg bg-neutral-900 hover:bg-neutral-800 text-neutral-400 hover:text-white flex items-center justify-center transition"
+          class="w-7 h-7 rounded-lg bg-neutral-900 hover:bg-neutral-800 text-neutral-400 hover:text-white flex items-center justify-center transition cursor-pointer"
         >
-          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+          <svg class="w-4 h-4 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
         </button>
         <span class="text-[11px] font-bold text-white truncate">القنوات</span>
       </div>
 
       <!-- Quick Switcher Tabs (باقات / قنوات) -->
       <div class="px-1.5 py-1.5 border-b border-neutral-900 grid grid-cols-2 gap-1 shrink-0">
-        <button id="tabGroupsBtn" onclick="switchDrawerTab('groups')" class="py-1 rounded-md text-[10px] font-semibold bg-red-600 text-white transition truncate">
+        <button id="tabGroupsBtn" onclick="switchDrawerTab('groups')" class="py-1 rounded-md text-[10px] font-semibold bg-red-600 text-white transition truncate cursor-pointer">
           الباقات
         </button>
-        <button id="tabChannelsBtn" onclick="switchDrawerTab('channels')" class="py-1 rounded-md text-[10px] font-semibold bg-neutral-900 text-neutral-400 transition truncate">
+        <button id="tabChannelsBtn" onclick="switchDrawerTab('channels')" class="py-1 rounded-md text-[10px] font-semibold bg-neutral-900 text-neutral-400 transition truncate cursor-pointer">
           القنوات (<span id="drawerChannelCount">0</span>)
         </button>
       </div>
@@ -573,7 +612,7 @@
       btnAspect.classList.remove('hidden');
       qualityBtnWrapper.classList.remove('hidden');
 
-      // إغلاق الدرج في الشاشات الصغيرة
+      // إغلاق الدرج في الشاشات الصغيرة بعد الاختيار
       if (window.innerWidth < 640 && !isVirtualLandscape) {
         toggleGroupsDrawer(null, false);
       }
@@ -658,7 +697,7 @@
       activeChannel.qualities.forEach(q => {
         const isSelected = activeQuality && activeQuality.id === q.id;
         const btn = document.createElement('button');
-        btn.className = `w-full text-right px-2.5 py-1.5 rounded-lg text-xs font-mono font-bold flex items-center justify-between transition active:scale-95 ${
+        btn.className = `w-full text-right px-2.5 py-1.5 rounded-lg text-xs font-mono font-bold flex items-center justify-between transition active:scale-95 cursor-pointer ${
           isSelected 
             ? 'bg-amber-500 text-black shadow' 
             : 'text-neutral-300 hover:bg-neutral-900 bg-neutral-900/50'
@@ -677,29 +716,38 @@
 
     // المجموعات والقنوات Drawer (ربع الشاشة فقط)
     function toggleGroupsDrawer(e, forceState) {
-      if (e) e.stopPropagation();
-      const isClosed = groupsDrawer.classList.contains('translate-x-full');
-      const shouldOpen = forceState !== undefined ? forceState : isClosed;
+      if (e) {
+        if (e.stopPropagation) e.stopPropagation();
+      }
+      const isCurrentlyOpen = groupsDrawer.classList.contains('drawer-open');
+      const shouldOpen = forceState !== undefined ? forceState : !isCurrentlyOpen;
 
       if (shouldOpen) {
-        groupsDrawer.classList.remove('translate-x-full');
+        groupsDrawer.classList.add('drawer-open');
         renderDrawerGroups();
         renderDrawerChannels(activeGroupIndex);
       } else {
-        groupsDrawer.classList.add('translate-x-full');
+        groupsDrawer.classList.remove('drawer-open');
       }
       resetControlsTimer();
     }
 
+    // إسناد صريح للحدث أيضاً لضمان الاستجابة التامة على كافة الهواتف
+    btnToggleGroups.addEventListener('click', (e) => toggleGroupsDrawer(e));
+    btnToggleGroups.addEventListener('touchend', (e) => {
+      e.stopPropagation();
+      toggleGroupsDrawer(e);
+    });
+
     function switchDrawerTab(tab) {
       if (tab === 'groups') {
-        tabGroupsBtn.className = 'py-1 rounded-md text-[10px] font-semibold bg-red-600 text-white transition truncate';
-        tabChannelsBtn.className = 'py-1 rounded-md text-[10px] font-semibold bg-neutral-900 text-neutral-400 transition truncate';
+        tabGroupsBtn.className = 'py-1 rounded-md text-[10px] font-semibold bg-red-600 text-white transition truncate cursor-pointer';
+        tabChannelsBtn.className = 'py-1 rounded-md text-[10px] font-semibold bg-neutral-900 text-neutral-400 transition truncate cursor-pointer';
         drawerGroupsView.classList.remove('hidden');
         drawerChannelsView.classList.add('hidden');
       } else {
-        tabGroupsBtn.className = 'py-1 rounded-md text-[10px] font-semibold bg-neutral-900 text-neutral-400 transition truncate';
-        tabChannelsBtn.className = 'py-1 rounded-md text-[10px] font-semibold bg-red-600 text-white transition truncate';
+        tabGroupsBtn.className = 'py-1 rounded-md text-[10px] font-semibold bg-neutral-900 text-neutral-400 transition truncate cursor-pointer';
+        tabChannelsBtn.className = 'py-1 rounded-md text-[10px] font-semibold bg-red-600 text-white transition truncate cursor-pointer';
         drawerGroupsView.classList.add('hidden');
         drawerChannelsView.classList.remove('hidden');
       }
@@ -710,7 +758,7 @@
       GROUPS_DB.forEach((grp, idx) => {
         const btn = document.createElement('button');
         const isActive = idx === activeGroupIndex;
-        btn.className = `w-full text-right p-1.5 rounded-lg text-[10px] font-semibold flex items-center justify-between transition active:scale-[0.98] ${
+        btn.className = `w-full text-right p-1.5 rounded-lg text-[10px] font-semibold flex items-center justify-between transition active:scale-[0.98] cursor-pointer ${
           isActive 
             ? 'bg-red-600 text-white shadow' 
             : 'text-neutral-300 hover:bg-neutral-900 bg-neutral-950/70 border border-neutral-900'
@@ -721,7 +769,8 @@
             isActive ? 'bg-black/30 text-white' : 'bg-neutral-800 text-neutral-400'
           }">${grp.channels.length}</span>
         `;
-        btn.onclick = () => {
+        btn.onclick = (e) => {
+          e.stopPropagation();
           activeGroupIndex = idx;
           renderDrawerGroups();
           renderDrawerChannels(idx);
@@ -767,24 +816,21 @@
           </div>
         `;
 
-        card.onclick = () => selectChannel(ch);
+        card.onclick = (e) => {
+          e.stopPropagation();
+          selectChannel(ch);
+        };
         drawerChannelsView.appendChild(card);
       });
     }
 
-    // التحكم بظهور واختفاء الأزرار تلقائياً
-    function resetControlsTimer() {
+    // التحكم بظهور واختفاء عناصر التحكم
+    function showControls() {
       controlsOverlay.style.opacity = '1';
       controlsOverlay.querySelectorAll('button, #qualityMenu').forEach(el => {
         el.style.pointerEvents = 'auto';
       });
       isControlsVisible = true;
-      clearTimeout(controlsTimer);
-      controlsTimer = setTimeout(() => {
-        if (!video.paused && groupsDrawer.classList.contains('translate-x-full')) {
-          hideControls();
-        }
-      }, 3000);
     }
 
     function hideControls() {
@@ -804,8 +850,19 @@
       }
     }
 
+    function resetControlsTimer() {
+      showControls();
+      clearTimeout(controlsTimer);
+      // إخفاء الأزرار بعد 3 ثواني فقط في حال كان الفيديو يعمل والدرج مغلقاً
+      if (activeChannel && !video.paused && !groupsDrawer.classList.contains('drawer-open')) {
+        controlsTimer = setTimeout(() => {
+          hideControls();
+        }, 3000);
+      }
+    }
+
     // ================= أحداث اللمس الفورية والدوران والإيماءات =================
-    // الطبقة gestureZone تغطي كامل الشاشة وتلتقط كل اللمسات فوراً من أول لمسة
+    // الطبقة gestureZone تلتقط اللمسات في المساحة الحرة خارج الأزرار
     let touchStartX = 0;
     let touchStartY = 0;
     let touchStartVol = 1.0;
@@ -917,7 +974,7 @@
       resetControlsTimer();
     });
 
-    // تشغيل أولي
+    // تهيئة أولية
     renderDrawerGroups();
     renderDrawerChannels(0);
     resetControlsTimer();
